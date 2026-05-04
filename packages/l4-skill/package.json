@@ -1,0 +1,15 @@
+{
+  "name": "@itfs/l4-skill",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@itfs/types": "workspace:*"
+  }
+}
