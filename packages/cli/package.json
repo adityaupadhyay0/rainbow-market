@@ -4,6 +4,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "itfs": "./bin/itfs.js"
+  },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
