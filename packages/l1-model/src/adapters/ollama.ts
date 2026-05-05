@@ -5,7 +5,7 @@ import {
   ReasoningBudget,
   ModelResponse,
   ModelDelta,
-} from '@itfs/types';
+} from "@itfs/types";
 
 export interface OllamaOptions {
   baseUrl?: string;
@@ -17,7 +17,7 @@ export class OllamaAdapter implements ModelAdapter {
   private model: string;
 
   constructor(options: OllamaOptions) {
-    this.baseUrl = options.baseUrl || 'http://localhost:11434';
+    this.baseUrl = options.baseUrl || "http://localhost:11434";
     this.model = options.model;
   }
 
@@ -27,8 +27,8 @@ export class OllamaAdapter implements ModelAdapter {
     _budget?: ReasoningBudget,
   ): Promise<ModelResponse> {
     const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: this.model,
         messages: messages.map((m) => ({
@@ -47,7 +47,7 @@ export class OllamaAdapter implements ModelAdapter {
     const data = await response.json();
     return {
       message: {
-        role: 'assistant',
+        role: "assistant",
         content: data.message.content,
         tool_calls: data.message.tool_calls,
       },
@@ -65,8 +65,8 @@ export class OllamaAdapter implements ModelAdapter {
     _budget?: ReasoningBudget,
   ): AsyncIterable<ModelDelta> {
     const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: this.model,
         messages: messages.map((m) => ({
@@ -91,7 +91,7 @@ export class OllamaAdapter implements ModelAdapter {
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter((l) => l.trim());
+      const lines = chunk.split("\n").filter((l) => l.trim());
 
       for (const line of lines) {
         try {
@@ -102,7 +102,7 @@ export class OllamaAdapter implements ModelAdapter {
             tool_calls: data.message?.tool_calls,
           };
         } catch (e) {
-          console.error('Error parsing Ollama stream chunk', e);
+          console.error("Error parsing Ollama stream chunk", e);
         }
       }
     }
@@ -110,7 +110,7 @@ export class OllamaAdapter implements ModelAdapter {
 
   async estimateTokens(messages: Message[]): Promise<number> {
     // Basic estimation: ~4 chars per token
-    const text = messages.map((m) => m.content).join(' ');
+    const text = messages.map((m) => m.content).join(" ");
     return Math.ceil(text.length / 4);
   }
 }

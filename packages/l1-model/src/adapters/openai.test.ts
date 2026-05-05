@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OpenAIAdapter } from './openai';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { OpenAIAdapter } from "./openai";
 
-describe('OpenAIAdapter', () => {
-  const options = { apiKey: 'test-key', model: 'gpt-4' };
+describe("OpenAIAdapter", () => {
+  const options = { apiKey: "test-key", model: "gpt-4" };
   let adapter: OpenAIAdapter;
 
   beforeEach(() => {
@@ -10,31 +10,31 @@ describe('OpenAIAdapter', () => {
     global.fetch = vi.fn();
   });
 
-  it('should call complete correctly', async () => {
+  it("should call complete correctly", async () => {
     const mockResponse = {
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: 'Hello from OpenAI!' } }],
+        choices: [{ message: { content: "Hello from OpenAI!" } }],
         usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
       }),
     };
     vi.mocked(global.fetch).mockResolvedValue(mockResponse as Response);
 
-    const result = await adapter.complete([{ role: 'user', content: 'Hi' }]);
+    const result = await adapter.complete([{ role: "user", content: "Hi" }]);
 
-    expect(result.message.content).toBe('Hello from OpenAI!');
+    expect(result.message.content).toBe("Hello from OpenAI!");
     expect(result.usage.total_tokens).toBe(12);
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/chat/completions'),
+      expect.stringContaining("/chat/completions"),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: 'Bearer test-key',
+          Authorization: "Bearer test-key",
         }),
       }),
     );
   });
 
-  it('should handle tool calls in complete', async () => {
+  it("should handle tool calls in complete", async () => {
     const mockResponse = {
       ok: true,
       json: async () => ({
@@ -44,7 +44,10 @@ describe('OpenAIAdapter', () => {
               content: null,
               tool_calls: [
                 {
-                  function: { name: 'get_weather', arguments: '{"city": "London"}' },
+                  function: {
+                    name: "get_weather",
+                    arguments: '{"city": "London"}',
+                  },
                 },
               ],
             },
@@ -55,10 +58,13 @@ describe('OpenAIAdapter', () => {
     };
     vi.mocked(global.fetch).mockResolvedValue(mockResponse as Response);
 
-    const result = await adapter.complete([], [{ name: 'get_weather', description: '', parameters: {} }]);
+    const result = await adapter.complete(
+      [],
+      [{ name: "get_weather", description: "", parameters: {} }],
+    );
 
     expect(result.message.tool_calls).toHaveLength(1);
-    expect(result.message.tool_calls![0].tool_id).toBe('get_weather');
-    expect(result.message.tool_calls![0].input).toEqual({ city: 'London' });
+    expect(result.message.tool_calls![0].tool_id).toBe("get_weather");
+    expect(result.message.tool_calls![0].input).toEqual({ city: "London" });
   });
 });

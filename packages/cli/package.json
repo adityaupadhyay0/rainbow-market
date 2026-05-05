@@ -13,6 +13,11 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@itfs/types": "workspace:*"
+    "@itfs/types": "workspace:*",
+    "@itfs/l1-model": "workspace:*",
+    "@itfs/l3-tooling": "workspace:*",
+    "@itfs/l5-reasoning": "workspace:*",
+    "@itfs/l6-orchestration": "workspace:*",
+    "@itfs/l7-hybrid": "workspace:*"
   }
 }

@@ -5,7 +5,7 @@ import {
   ReasoningBudget,
   ModelResponse,
   ModelDelta,
-} from '@itfs/types';
+} from "@itfs/types";
 
 export interface OpenAIAdapterOptions {
   apiKey: string;
@@ -20,7 +20,7 @@ export class OpenAIAdapter implements ModelAdapter {
 
   constructor(options: OpenAIAdapterOptions) {
     this.apiKey = options.apiKey;
-    this.baseUrl = options.baseUrl || 'https://api.openai.com/v1';
+    this.baseUrl = options.baseUrl || "https://api.openai.com/v1";
     this.model = options.model;
   }
 
@@ -30,9 +30,9 @@ export class OpenAIAdapter implements ModelAdapter {
     _budget?: ReasoningBudget,
   ): Promise<ModelResponse> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
@@ -42,7 +42,7 @@ export class OpenAIAdapter implements ModelAdapter {
           content: m.content,
         })),
         tools: tools?.map((t) => ({
-          type: 'function',
+          type: "function",
           function: {
             name: t.name,
             description: t.description,
@@ -60,7 +60,7 @@ export class OpenAIAdapter implements ModelAdapter {
     const choice = data.choices[0];
     return {
       message: {
-        role: 'assistant',
+        role: "assistant",
         content: choice.message.content,
         tool_calls: choice.message.tool_calls?.map(
           (tc: { function: { name: string; arguments: string } }) => ({
@@ -83,9 +83,9 @@ export class OpenAIAdapter implements ModelAdapter {
     _budget?: ReasoningBudget,
   ): AsyncIterable<ModelDelta> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
@@ -96,7 +96,7 @@ export class OpenAIAdapter implements ModelAdapter {
         })),
         stream: true,
         tools: tools?.map((t) => ({
-          type: 'function',
+          type: "function",
           function: {
             name: t.name,
             description: t.description,
@@ -114,19 +114,19 @@ export class OpenAIAdapter implements ModelAdapter {
     if (!reader) return;
 
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        const cleanLine = line.replace(/^data: /, '').trim();
-        if (cleanLine === '' || cleanLine === '[DONE]') continue;
+        const cleanLine = line.replace(/^data: /, "").trim();
+        if (cleanLine === "" || cleanLine === "[DONE]") continue;
 
         try {
           const data = JSON.parse(cleanLine);
@@ -137,20 +137,22 @@ export class OpenAIAdapter implements ModelAdapter {
               tool_calls: delta.tool_calls?.map(
                 (tc: { function: { name: string; arguments?: string } }) => ({
                   tool_id: tc.function.name,
-                  input: tc.function.arguments ? JSON.parse(tc.function.arguments) : undefined,
+                  input: tc.function.arguments
+                    ? JSON.parse(tc.function.arguments)
+                    : undefined,
                 }),
               ),
             };
           }
         } catch (e) {
-          console.error('Error parsing OpenAI stream chunk', e);
+          console.error("Error parsing OpenAI stream chunk", e);
         }
       }
     }
   }
 
   async estimateTokens(messages: Message[]): Promise<number> {
-    const text = messages.map((m) => m.content).join(' ');
+    const text = messages.map((m) => m.content).join(" ");
     return Math.ceil(text.length / 4);
   }
 }
