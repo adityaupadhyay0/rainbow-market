@@ -1,35 +1,40 @@
-import { Tool } from '../registry';
-import { ToolResult } from '@itfs/types';
+import { Tool } from "../registry";
+import { ToolResult } from "@itfs/types";
 
 export class WebAccessTool implements Tool {
   spec = {
-    name: 'web_access',
-    description: 'Search or fetch content from the web',
+    name: "web_access",
+    description: "Search or fetch content from the web",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
-        action: { type: 'string', enum: ['search', 'fetch'] },
-        query: { type: 'string' },
-        url: { type: 'string' },
+        action: { type: "string", enum: ["search", "fetch"] },
+        query: { type: "string" },
+        url: { type: "string" },
       },
-      required: ['action'],
+      required: ["action"],
     },
   };
 
   async execute(input: unknown): Promise<ToolResult> {
-    const { action, query, url } = input as { action: string; query?: string; url?: string };
+    const { action, query, url } = input as {
+      action: string;
+      query?: string;
+      url?: string;
+    };
     const start = Date.now();
     try {
-      if (action === 'search') {
+      if (action === "search") {
         // Simplified search mock
         return {
           success: true,
           output: `Search results for "${query}": 1. Result A, 2. Result B`,
           duration_ms: Date.now() - start,
         };
-      } else if (action === 'fetch') {
+      } else if (action === "fetch") {
         const response = await fetch(url!);
-        if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+        if (!response.ok)
+          throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
         const text = await response.text();
         return {
           success: true,

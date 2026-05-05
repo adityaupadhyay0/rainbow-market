@@ -1,4 +1,4 @@
-import { TaskEnvelope } from '@itfs/types';
+import { TaskEnvelope } from "@itfs/types";
 
 export class RoutingPolicyEngine {
   private routingRules: string;
@@ -7,16 +7,16 @@ export class RoutingPolicyEngine {
     this.routingRules = routingRules;
   }
 
-  determineRoute(task: TaskEnvelope): 'local' | 'cloud' {
-    if (task.privacy_mode === 'local_only') return 'local';
-    if (task.privacy_mode === 'cloud_allowed') return 'cloud';
+  determineRoute(task: TaskEnvelope): "local" | "cloud" {
+    if (task.privacy_mode === "local_only") return "local";
+    if (task.privacy_mode === "cloud_allowed") return "cloud";
 
     // Simple policy: if title contains "complex", go to cloud
-    if (task.title.toLowerCase().includes('complex')) {
-      return 'cloud';
+    if (task.title.toLowerCase().includes("complex")) {
+      return "cloud";
     }
 
     // Default to local as per ITFS philosophy
-    return 'local';
+    return "local";
   }
 }

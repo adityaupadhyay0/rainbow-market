@@ -2,11 +2,17 @@ import { ToolId, ToolSpec, ToolResult } from "@itfs/types";
 
 export interface Tool {
   spec: ToolSpec;
+  scope?: string;
   execute(input: unknown): Promise<ToolResult>;
 }
 
 export class ToolRegistry {
   private tools: Map<ToolId, Tool> = new Map();
+  private allowedScopes: Set<string> = new Set(["*"]);
+
+  setAllowedScopes(scopes: string[]) {
+    this.allowedScopes = new Set(scopes);
+  }
 
   register(tool: Tool) {
     this.tools.set(tool.spec.name, tool);
@@ -27,6 +33,19 @@ export class ToolRegistry {
         success: false,
         output: null,
         error: `Tool ${id} not found`,
+        duration_ms: 0,
+      };
+    }
+
+    if (
+      tool.scope &&
+      !this.allowedScopes.has("*") &&
+      !this.allowedScopes.has(tool.scope)
+    ) {
+      return {
+        success: false,
+        output: null,
+        error: `Permission denied: Tool ${id} requires scope ${tool.scope}`,
         duration_ms: 0,
       };
     }

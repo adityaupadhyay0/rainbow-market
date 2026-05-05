@@ -24,13 +24,13 @@ Each layer only talks to its immediate neighbours through typed contracts. No la
 
 ---
 
-## Phase 0 — Repo Skeleton & Shared Types
+## Phase 0 — Repo Skeleton & Shared Types [DONE]
 
 > **Goal:** One repo. Shared types. CI green. No business logic yet.
 
 ---
 
-### TASK-000 · Monorepo scaffold
+### TASK-000 · Monorepo scaffold [DONE]
 
 **What to build**
 
@@ -78,7 +78,7 @@ itfs/
 
 ---
 
-### TASK-001 · Shared types package (`packages/types`)
+### TASK-001 · Shared types package (`packages/types`) [DONE]
 
 **What to build**
 
@@ -160,13 +160,13 @@ export interface ToolResult {
 
 ---
 
-## Phase 1 — L1 Model Layer
+## Phase 1 — L1 Model Layer [DONE]
 
 > **Goal:** Abstract the model behind one interface so the rest of the system does not care whether the model is local or cloud.
 
 ---
 
-### TASK-010 · Model adapter interface
+### TASK-010 · Model adapter interface [DONE]
 
 **What to build**
 
@@ -201,7 +201,7 @@ export interface ModelAdapter {
 
 ---
 
-### TASK-011 · Local model adapter
+### TASK-011 · Local model adapter [DONE]
 
 **What to build**
 
@@ -217,7 +217,7 @@ export interface ModelAdapter {
 
 ---
 
-### TASK-012 · Cloud model adapter
+### TASK-012 · Cloud model adapter [DONE]
 
 **What to build**
 
@@ -231,13 +231,13 @@ export interface ModelAdapter {
 
 ---
 
-## Phase 2 — L3 Tooling Layer
+## Phase 2 — L3 Tooling Layer [DONE]
 
 > **Goal:** Build deterministic actions the model can invoke safely.
 
 ---
 
-### TASK-020 · Tool registry
+### TASK-020 · Tool registry [DONE]
 
 **What to build**
 
@@ -253,7 +253,7 @@ export interface ModelAdapter {
 
 ---
 
-### TASK-021 · Code execution tool
+### TASK-021 · Code execution tool [DONE]
 
 **What to build**
 
@@ -274,7 +274,7 @@ export interface ModelAdapter {
 
 ---
 
-### TASK-022 · File system tools
+### TASK-022 · File system tools [DONE]
 
 **What to build**
 
@@ -291,7 +291,7 @@ export interface ModelAdapter {
 
 ---
 
-### TASK-023 · Web access tool
+### TASK-023 · Web access tool [DONE]
 
 **What to build**
 
@@ -308,13 +308,13 @@ export interface ModelAdapter {
 
 ---
 
-## Phase 3 — L4 Skill Layer
+## Phase 3 — L4 Skill Layer [DONE]
 
 > **Goal:** Convert repeated workflows into reusable capability bundles.
 
 ---
 
-### TASK-030 · Skill bundle structure
+### TASK-030 · Skill bundle structure [DONE]
 
 **What to build**
 
@@ -336,7 +336,7 @@ skills/
 
 ---
 
-### TASK-031 · SKILL.md standard
+### TASK-031 · SKILL.md standard [DONE]
 
 **What to build**
 
@@ -354,7 +354,7 @@ skills/
 
 ---
 
-### TASK-032 · Skill loader and matcher
+### TASK-032 · Skill loader and matcher [DONE]
 
 **What to build**
 
@@ -369,7 +369,7 @@ skills/
 
 ---
 
-### TASK-033 · Skill execution engine
+### TASK-033 · Skill execution engine [DONE]
 
 **What to build**
 
@@ -384,13 +384,13 @@ skills/
 
 ---
 
-## Phase 4 — L2 Knowledge Layer
+## Phase 4 — L2 Knowledge Layer [DONE]
 
 > **Goal:** Give the system durable context beyond the current prompt window.
 
 ---
 
-### TASK-040 · Retrieval backend
+### TASK-040 · Retrieval backend [DONE]
 
 **What to build**
 
@@ -405,7 +405,7 @@ skills/
 
 ---
 
-### TASK-041 · Memory system
+### TASK-041 · Memory system [DONE]
 
 **What to build**
 
@@ -421,7 +421,7 @@ skills/
 
 ---
 
-### TASK-042 · Agentic retrieval loop
+### TASK-042 · Agentic retrieval loop [TODO]
 
 **What to build**
 
@@ -435,13 +435,13 @@ skills/
 
 ---
 
-## Phase 5 — L5 Reasoning Layer
+## Phase 5 — L5 Reasoning Layer [DONE]
 
 > **Goal:** Control how inference-time compute is spent.
 
 ---
 
-### TASK-050 · Reasoning budget system
+### TASK-050 · Reasoning budget system [DONE]
 
 **What to build**
 
@@ -457,7 +457,7 @@ skills/
 
 ---
 
-### TASK-051 · Sequential reasoning loop
+### TASK-051 · Sequential reasoning loop [DONE]
 
 **What to build**
 
@@ -471,7 +471,7 @@ skills/
 
 ---
 
-### TASK-052 · Parallel reasoning loop
+### TASK-052 · Parallel reasoning loop [DONE]
 
 **What to build**
 
@@ -485,7 +485,7 @@ skills/
 
 ---
 
-### TASK-053 · Verifier system
+### TASK-053 · Verifier system [DONE]
 
 **What to build**
 
@@ -500,13 +500,13 @@ skills/
 
 ---
 
-## Phase 6 — L6 Orchestration Layer
+## Phase 6 — L6 Orchestration Layer [DONE]
 
 > **Goal:** Convert goals into plans, dependencies, retries, and subtasks.
 
 ---
 
-### TASK-060 · Task decomposition
+### TASK-060 · Task decomposition [DONE]
 
 **What to build**
 
@@ -521,7 +521,7 @@ skills/
 
 ---
 
-### TASK-061 · Routing and dispatch
+### TASK-061 · Routing and dispatch [DONE]
 
 **What to build**
 
@@ -535,7 +535,7 @@ skills/
 
 ---
 
-### TASK-062 · Failure handling
+### TASK-062 · Failure handling [DONE]
 
 **What to build**
 
@@ -550,13 +550,13 @@ skills/
 
 ---
 
-## Phase 7 — L7 Hybrid Intelligence Layer
+## Phase 7 — L7 Hybrid Intelligence Layer [DONE]
 
 > **Goal:** Decide local vs cloud execution with policy, not vibes.
 
 ---
 
-### TASK-070 · Routing policy engine
+### TASK-070 · Routing policy engine [DONE]
 
 **What to build**
 
@@ -573,7 +573,7 @@ skills/
 
 ---
 
-### TASK-071 · Unified gateway
+### TASK-071 · Unified gateway [DONE]
 
 **What to build**
 
@@ -588,13 +588,13 @@ skills/
 
 ---
 
-## Phase 8 — Observability, Eval, and Hardening
+## Phase 8 — Observability, Eval, and Hardening [DONE]
 
 > **Goal:** Make the system measurable, debuggable, and safe to evolve.
 
 ---
 
-### TASK-080 · Telemetry
+### TASK-080 · Telemetry [DONE]
 
 **What to build**
 
@@ -610,7 +610,7 @@ skills/
 
 ---
 
-### TASK-081 · Evaluation harness
+### TASK-081 · Evaluation harness [DONE]
 
 **What to build**
 
@@ -625,7 +625,7 @@ skills/
 
 ---
 
-### TASK-082 · Safety and policy controls
+### TASK-082 · Safety and policy controls [PARTIAL]
 
 **What to build**
 

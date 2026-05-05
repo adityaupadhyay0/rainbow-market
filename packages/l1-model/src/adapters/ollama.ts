@@ -43,7 +43,7 @@ export class OllamaAdapter implements ModelAdapter {
         })),
         stream: false,
         tools: tools?.map((t) => ({
-          type: 'function',
+          type: "function",
           function: {
             name: t.name,
             description: t.description,
@@ -94,7 +94,7 @@ export class OllamaAdapter implements ModelAdapter {
         })),
         stream: true,
         tools: tools?.map((t) => ({
-          type: 'function',
+          type: "function",
           function: {
             name: t.name,
             description: t.description,
@@ -112,15 +112,15 @@ export class OllamaAdapter implements ModelAdapter {
     if (!reader) return;
 
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
         if (!line.trim()) continue;

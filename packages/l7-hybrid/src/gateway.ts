@@ -1,6 +1,6 @@
 import { TaskEnvelope, Message } from "@itfs/types";
 import { Orchestrator } from "@itfs/l6-orchestration";
-import { RoutingPolicyEngine } from './policy';
+import { RoutingPolicyEngine } from "./policy";
 
 export class HybridGateway {
   private orchestrator: Orchestrator;

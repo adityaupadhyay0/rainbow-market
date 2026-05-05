@@ -18,6 +18,14 @@ export class ReadFileTool implements Tool {
 
   async execute(input: unknown): Promise<ToolResult> {
     const { path: filePath } = input as { path: string };
+    if (filePath.includes("..")) {
+      return {
+        success: false,
+        output: null,
+        error: "Path out of bounds",
+        duration_ms: 0,
+      };
+    }
     try {
       const content = await fs.readFile(filePath, "utf-8");
       return { success: true, output: content, duration_ms: 0 };
@@ -51,6 +59,14 @@ export class WriteFileTool implements Tool {
       path: string;
       content: string;
     };
+    if (filePath.includes("..")) {
+      return {
+        success: false,
+        output: null,
+        error: "Path out of bounds",
+        duration_ms: 0,
+      };
+    }
     try {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, content, "utf-8");

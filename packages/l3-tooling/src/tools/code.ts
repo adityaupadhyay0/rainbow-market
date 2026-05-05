@@ -6,6 +6,7 @@ import { ToolResult } from "@itfs/types";
 const execAsync = promisify(exec);
 
 export class CodeExecutionTool implements Tool {
+  scope = "code:execution";
   spec = {
     name: "execute_code",
     description:

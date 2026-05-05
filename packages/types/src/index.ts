@@ -120,7 +120,7 @@ export class Telemetry {
     this.traces.push({
       timestamp: Date.now(),
       event,
-      data
+      data,
     });
     console.log(`[TRACE] ${event}`, data);
   }

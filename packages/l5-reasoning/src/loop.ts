@@ -1,5 +1,6 @@
 import { ModelAdapter, Message, TaskEnvelope, Telemetry } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
+import { VerifierSystem } from "./verifier";
 
 export class ReasoningLoop {
   private model: ModelAdapter;
@@ -12,6 +13,11 @@ export class ReasoningLoop {
 
   async run(task: TaskEnvelope, history: Message[] = []): Promise<Message> {
     const budget = task.budget;
+
+    if (budget.strategy === "tot" || budget.max_branches > 1) {
+      return this.runParallel(task, history);
+    }
+
     const currentHistory = [...history];
     let steps = 0;
 
@@ -29,6 +35,14 @@ export class ReasoningLoop {
       );
 
       const message = response.message;
+      const verification = VerifierSystem.verify(message, budget.verifier);
+
+      if (!verification.valid) {
+        Telemetry.log("verification_failed", { reason: verification.reason });
+        steps++;
+        continue;
+      }
+
       currentHistory.push(message);
       Telemetry.log("model_response", {
         content: message.content,
@@ -40,20 +54,23 @@ export class ReasoningLoop {
       }
 
       for (const toolCall of message.tool_calls) {
-        Telemetry.log('tool_call_start', {
+        Telemetry.log("tool_call_start", {
           tool_id: toolCall.tool_id,
           input: toolCall.input,
         });
-        const result = await this.tools.execute(toolCall.tool_id, toolCall.input);
+        const result = await this.tools.execute(
+          toolCall.tool_id,
+          toolCall.input,
+        );
         if (toolCall.id) {
           result.tool_call_id = toolCall.id;
         }
-        Telemetry.log('tool_call_end', {
+        Telemetry.log("tool_call_end", {
           tool_id: toolCall.tool_id,
           success: result.success,
         });
         currentHistory.push({
-          role: 'tool',
+          role: "tool",
           content: JSON.stringify(result.output || result.error),
           tool_call_id: toolCall.id,
           tool_result: result,
@@ -64,5 +81,35 @@ export class ReasoningLoop {
     }
 
     throw new Error("Reasoning budget exceeded");
+  }
+
+  private async runParallel(
+    task: TaskEnvelope,
+    history: Message[],
+  ): Promise<Message> {
+    Telemetry.log("parallel_reasoning_start", {
+      branches: task.budget.max_branches,
+      task_id: task.task_id,
+    });
+
+    const branches = Array.from({ length: task.budget.max_branches }).map(() =>
+      this.run(
+        {
+          ...task,
+          budget: { ...task.budget, max_branches: 1, strategy: "cot" }, // Prevent recursion
+        },
+        history,
+      ),
+    );
+
+    const results = await Promise.all(branches);
+
+    // Simple selection: pick the one with most content or just the first for now
+    const best = results.sort(
+      (a, b) => (b.content?.length || 0) - (a.content?.length || 0),
+    )[0];
+
+    Telemetry.log("parallel_reasoning_end", { best_content: best.content });
+    return best;
   }
 }

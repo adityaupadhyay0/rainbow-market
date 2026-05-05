@@ -12,7 +12,7 @@ export class Orchestrator {
     const subTasks = this.decompose(task);
     console.log(`Decomposed task into ${subTasks.length} sub-tasks`);
 
-    let lastResult: Message = { role: 'assistant', content: '' };
+    let lastResult: Message = { role: "assistant", content: "" };
     for (const subTask of subTasks) {
       lastResult = await this.reasoningLoop.run(subTask);
     }
@@ -21,8 +21,8 @@ export class Orchestrator {
 
   private decompose(task: TaskEnvelope): TaskEnvelope[] {
     // Simple decomposition mock: if description contains "and", split it
-    if (task.description.includes(' and ')) {
-      const parts = task.description.split(' and ');
+    if (task.description.includes(" and ")) {
+      const parts = task.description.split(" and ");
       return parts.map((part, i) => ({
         ...task,
         task_id: `${task.task_id}-sub-${i}`,

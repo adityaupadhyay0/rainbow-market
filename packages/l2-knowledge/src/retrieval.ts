@@ -5,7 +5,8 @@ export interface RetrievalResult {
 }
 
 export class SimpleVectorStore {
-  private documents: { content: string; metadata?: Record<string, unknown> }[] = [];
+  private documents: { content: string; metadata?: Record<string, unknown> }[] =
+    [];
 
   addDocument(content: string, metadata?: Record<string, unknown>) {
     this.documents.push({ content, metadata });
@@ -16,8 +17,10 @@ export class SimpleVectorStore {
     const results = this.documents
       .map((doc) => {
         const score = text
-          .split(' ')
-          .filter((word) => doc.content.toLowerCase().includes(word.toLowerCase())).length;
+          .split(" ")
+          .filter((word) =>
+            doc.content.toLowerCase().includes(word.toLowerCase()),
+          ).length;
         return { ...doc, score };
       })
       .sort((a, b) => b.score - a.score)

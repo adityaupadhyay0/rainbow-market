@@ -1,5 +1,5 @@
-import { TaskEnvelope, Telemetry } from '@itfs/types';
-import { HybridGateway } from '@itfs/l7-hybrid';
+import { TaskEnvelope, Telemetry } from "@itfs/types";
+import { HybridGateway } from "@itfs/l7-hybrid";
 
 export interface EvalResult {
   task_id: string;
@@ -21,19 +21,24 @@ export class EvalHarness {
       const start = Date.now();
       try {
         await this.gateway.handleTask(task);
-        const traces = Telemetry.getTraces().filter(t => t.data?.task_id === task.task_id || t.event === 'model_response');
+        const traces = Telemetry.getTraces().filter(
+          (t) =>
+            (t.data as { task_id?: string })?.task_id === task.task_id ||
+            t.event === "model_response",
+        );
         results.push({
           task_id: task.task_id,
           success: true,
           duration_ms: Date.now() - start,
-          steps: traces.filter(t => t.event === 'reasoning_step_start').length
+          steps: traces.filter((t) => t.event === "reasoning_step_start")
+            .length,
         });
       } catch (_e) {
         results.push({
           task_id: task.task_id,
           success: false,
           duration_ms: Date.now() - start,
-          steps: 0
+          steps: 0,
         });
       }
     }

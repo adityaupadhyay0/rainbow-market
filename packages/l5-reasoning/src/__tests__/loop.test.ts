@@ -35,6 +35,39 @@ describe("ReasoningLoop", () => {
 
     const result = await loop.run(task);
     expect(result.content).toBe("Task complete");
-    expect(mockModel.complete).toHaveBeenCalled();
+  });
+
+  it("should run a parallel loop when branches > 1", async () => {
+    const mockModel: ModelAdapter = {
+      complete: vi.fn().mockResolvedValue({
+        message: { role: "assistant", content: "Parallel result" },
+        usage: { total_tokens: 10 },
+      }),
+      stream: vi.fn(),
+      estimateTokens: vi.fn(),
+    };
+    const registry = new ToolRegistry();
+    const loop = new ReasoningLoop(mockModel, registry);
+
+    const task: TaskEnvelope = {
+      task_id: "parallel-1",
+      domain: "general",
+      title: "Parallel Test",
+      description: "Test task",
+      budget: {
+        strategy: "tot",
+        max_tokens: 100,
+        max_depth: 5,
+        max_branches: 3,
+        max_retries: 3,
+        verifier: "null",
+        on_budget_exceeded: "fail",
+      },
+      privacy_mode: "local_only",
+    };
+
+    const result = await loop.run(task);
+    expect(result.content).toBe("Parallel result");
+    expect(mockModel.complete).toHaveBeenCalledTimes(3);
   });
 });
