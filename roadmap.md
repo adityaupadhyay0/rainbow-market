@@ -3,10 +3,8 @@
 ### Inference-Time First Stack · v1.0 · May 2026
 
 > **How to use this document**
-> 
-> 
+>
 > Every task below is self-contained. You do not need the SRS to start. Each task tells you what to build, what the acceptance criteria are, what interfaces to expose, and what not to do. Work top-to-bottom inside each phase. Do not start the next phase until the current one is green.
-> 
 
 ---
 
@@ -29,7 +27,6 @@ Each layer only talks to its immediate neighbours through typed contracts. No la
 ## Phase 0 — Repo Skeleton & Shared Types
 
 > **Goal:** One repo. Shared types. CI green. No business logic yet.
-> 
 
 ---
 
@@ -90,24 +87,35 @@ This is the most important package in the repo. Every inter-layer contract is de
 **File: `packages/types/src/index.ts`**
 
 ```tsx
-export type SemVer = string;   // "1.0.0"
-export type TaskId = string;    // uuid
-export type SkillId = string;   // "write_code@1.2.0"
+export type SemVer = string; // "1.0.0"
+export type TaskId = string; // uuid
+export type SkillId = string; // "write_code@1.2.0"
 export type ToolId = string;
 
 export type DomainTag =
-  | 'coding:ai'
-  | 'coding:mobile'
-  | 'coding:web'
-  | 'coding:general'
-  | 'web:scraping'
-  | 'web:automation'
-  | 'workflow'
-  | 'general';
+  | "coding:ai"
+  | "coding:mobile"
+  | "coding:web"
+  | "coding:general"
+  | "web:scraping"
+  | "web:automation"
+  | "workflow"
+  | "general";
 
-export type ReasoningStrategy = 'cot' | 'tot' | 'rat' | 'reflexion' | 'metacognitive';
-export type BudgetExceededPolicy = 'escalate' | 'return_best' | 'fail';
-export type VerifierType = 'execution' | 'syntax' | 'self_consistency' | 'process_reward' | 'human_in_loop' | 'null';
+export type ReasoningStrategy =
+  | "cot"
+  | "tot"
+  | "rat"
+  | "reflexion"
+  | "metacognitive";
+export type BudgetExceededPolicy = "escalate" | "return_best" | "fail";
+export type VerifierType =
+  | "execution"
+  | "syntax"
+  | "self_consistency"
+  | "process_reward"
+  | "human_in_loop"
+  | "null";
 
 export interface ReasoningBudget {
   strategy: ReasoningStrategy;
@@ -126,7 +134,7 @@ export interface TaskEnvelope {
   description: string;
   inputs?: Record<string, unknown>;
   budget: ReasoningBudget;
-  privacy_mode: 'local_only' | 'hybrid' | 'cloud_allowed';
+  privacy_mode: "local_only" | "hybrid" | "cloud_allowed";
 }
 
 export interface ToolCall {
@@ -155,7 +163,6 @@ export interface ToolResult {
 ## Phase 1 — L1 Model Layer
 
 > **Goal:** Abstract the model behind one interface so the rest of the system does not care whether the model is local or cloud.
-> 
 
 ---
 
@@ -167,8 +174,16 @@ A common adapter contract used by all providers.
 
 ```tsx
 export interface ModelAdapter {
-  complete(messages: Message[], tools?: ToolSpec[], budget?: ReasoningBudget): Promise<ModelResponse>;
-  stream(messages: Message[], tools?: ToolSpec[], budget?: ReasoningBudget): AsyncIterable<ModelDelta>;
+  complete(
+    messages: Message[],
+    tools?: ToolSpec[],
+    budget?: ReasoningBudget,
+  ): Promise<ModelResponse>;
+  stream(
+    messages: Message[],
+    tools?: ToolSpec[],
+    budget?: ReasoningBudget,
+  ): AsyncIterable<ModelDelta>;
   estimateTokens(messages: Message[]): Promise<number>;
 }
 ```
@@ -219,7 +234,6 @@ export interface ModelAdapter {
 ## Phase 2 — L3 Tooling Layer
 
 > **Goal:** Build deterministic actions the model can invoke safely.
-> 
 
 ---
 
@@ -297,7 +311,6 @@ export interface ModelAdapter {
 ## Phase 3 — L4 Skill Layer
 
 > **Goal:** Convert repeated workflows into reusable capability bundles.
-> 
 
 ---
 
@@ -374,7 +387,6 @@ skills/
 ## Phase 4 — L2 Knowledge Layer
 
 > **Goal:** Give the system durable context beyond the current prompt window.
-> 
 
 ---
 
@@ -426,7 +438,6 @@ skills/
 ## Phase 5 — L5 Reasoning Layer
 
 > **Goal:** Control how inference-time compute is spent.
-> 
 
 ---
 
@@ -492,7 +503,6 @@ skills/
 ## Phase 6 — L6 Orchestration Layer
 
 > **Goal:** Convert goals into plans, dependencies, retries, and subtasks.
-> 
 
 ---
 
@@ -543,7 +553,6 @@ skills/
 ## Phase 7 — L7 Hybrid Intelligence Layer
 
 > **Goal:** Decide local vs cloud execution with policy, not vibes.
-> 
 
 ---
 
@@ -582,7 +591,6 @@ skills/
 ## Phase 8 — Observability, Eval, and Hardening
 
 > **Goal:** Make the system measurable, debuggable, and safe to evolve.
-> 
 
 ---
 

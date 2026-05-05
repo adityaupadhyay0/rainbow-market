@@ -47,13 +47,13 @@ This SRS covers the ITFS runtime, its layered architecture, the Skills & Knowled
 
 ITFS is governed by five architectural pillars. All design decisions must serve at least one pillar.
 
-| **Pillar** | **Definition** | **Why It Matters** |
-| --- | --- | --- |
-| Inference-Time Reasoning | Prefer sequential or parallel test-time scaling over raw parameter count. Budget compute at inference, not pre-training. | Allows smaller models to rival larger ones on specific tasks at a fraction of the cost. |
-| Layered Architecture | Separate Orchestration, Execution, Tooling, Knowledge, and Memory into discrete, replaceable layers. | Each layer can be upgraded, swapped, or scaled independently. |
-| Structured Tooling | Every capability is a named, versioned, self-describing Tool with a typed contract. Tools are composable and discoverable. | Prevents capability sprawl; enables the local model to reason about what it can do. |
-| Skills & Knowledge System | Domain knowledge is encoded in SKILL.md files — structured prompt templates consumed by any compatible model. | Transfers expert context into inference-time reasoning without fine-tuning. |
-| Hybrid Orchestration | Cloud model (e.g. Claude) handles broad planning & high-complexity synthesis. Local agents handle execution loops, tooling, and agentic tasks. | Optimizes cost-vs-capability trade-off per task segment. |
+| **Pillar**                | **Definition**                                                                                                                                 | **Why It Matters**                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Inference-Time Reasoning  | Prefer sequential or parallel test-time scaling over raw parameter count. Budget compute at inference, not pre-training.                       | Allows smaller models to rival larger ones on specific tasks at a fraction of the cost. |
+| Layered Architecture      | Separate Orchestration, Execution, Tooling, Knowledge, and Memory into discrete, replaceable layers.                                           | Each layer can be upgraded, swapped, or scaled independently.                           |
+| Structured Tooling        | Every capability is a named, versioned, self-describing Tool with a typed contract. Tools are composable and discoverable.                     | Prevents capability sprawl; enables the local model to reason about what it can do.     |
+| Skills & Knowledge System | Domain knowledge is encoded in SKILL.md files — structured prompt templates consumed by any compatible model.                                  | Transfers expert context into inference-time reasoning without fine-tuning.             |
+| Hybrid Orchestration      | Cloud model (e.g. Claude) handles broad planning & high-complexity synthesis. Local agents handle execution loops, tooling, and agentic tasks. | Optimizes cost-vs-capability trade-off per task segment.                                |
 
 ## **2.2 Inference-Time vs Parameter Scaling — The Research Basis**
 
@@ -61,7 +61,7 @@ ITFS's primary design driver is grounded in a growing body of research on test-t
 
 - Parallel scaling (Best-of-N, majority voting) generates multiple candidate solutions and selects the best, improving accuracy without changing model size.
 - Sequential scaling (iterative refinement, chain-of-thought, self-correction) allocates additional reasoning steps within a single inference pass.
-- S* (a coding-specific TTS method) combines both strategies: generating multiple solutions then iteratively debugging using execution feedback — a pattern ITFS implements natively in its Code Execution Tool layer.
+- S\* (a coding-specific TTS method) combines both strategies: generating multiple solutions then iteratively debugging using execution feedback — a pattern ITFS implements natively in its Code Execution Tool layer.
 - Research shows that for tasks with verifiable outputs (code execution, test suites, structured data), inference-time scaling produces Pareto-optimal cost-performance trade-offs versus scaling model parameters.
 
 ITFS operationalizes these findings through its Reasoning Budget system (Section 4.3).
@@ -80,13 +80,13 @@ For teams building on specific domains — mobile coding, web scraping, AI-assis
 
 ITFS uses a five-layer stack. Layers communicate only through defined contracts — no layer has direct knowledge of another layer's implementation.
 
-| **Layer** | **Name** | **Responsibility** | **Replaceable By** |
-| --- | --- | --- | --- |
-| L5 | Orchestration Layer | High-level planning, task decomposition, routing decisions. Cloud model preferred. | Any LLM with system prompt + tool call support |
-| L4 | Execution Layer | Agent loop control, sub-task dispatch, context window management, memory writes. | LangGraph, AutoGen, custom loop |
-| L3 | Tooling Layer | Named, versioned tool registry. Code execution, web access, file ops, external APIs. | MCP server, OpenAI Tools API, custom adapters |
-| L2 | Skills & Knowledge Layer | SKILL.md files, domain prompt templates, RAG knowledge retrieval, context injection. | Any retrieval system returning text context |
-| L1 | Model Layer | Inference endpoint. Local (Ollama, vLLM) or cloud (Anthropic, OpenAI). Stateless. | Any OpenAI-API-compatible endpoint |
+| **Layer** | **Name**                 | **Responsibility**                                                                   | **Replaceable By**                             |
+| --------- | ------------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| L5        | Orchestration Layer      | High-level planning, task decomposition, routing decisions. Cloud model preferred.   | Any LLM with system prompt + tool call support |
+| L4        | Execution Layer          | Agent loop control, sub-task dispatch, context window management, memory writes.     | LangGraph, AutoGen, custom loop                |
+| L3        | Tooling Layer            | Named, versioned tool registry. Code execution, web access, file ops, external APIs. | MCP server, OpenAI Tools API, custom adapters  |
+| L2        | Skills & Knowledge Layer | SKILL.md files, domain prompt templates, RAG knowledge retrieval, context injection. | Any retrieval system returning text context    |
+| L1        | Model Layer              | Inference endpoint. Local (Ollama, vLLM) or cloud (Anthropic, OpenAI). Stateless.    | Any OpenAI-API-compatible endpoint             |
 
 ## **3.2 Request Flow**
 
@@ -136,14 +136,14 @@ For domain knowledge exceeding the context window, ITFS integrates a lightweight
 
 ## **4.2 Tooling Layer Requirements**
 
-| **Tool Category** | **Examples** | **Contract Requirements** |
-| --- | --- | --- |
-| Code Execution | Python runner, Node.js runner, shell exec | Returns stdout, stderr, exit code, execution time. Supports iterative refinement loop. |
-| Web Access | Search, fetch, scrape, sitemap | Returns structured result with source URL and timestamp. Rate-limit aware. |
-| File System | Read, write, diff, patch | Sandboxed to project root. Returns diff on write. Supports undo. |
-| External APIs | GitHub, Jira, Slack, Google Workspace | MCP-compatible. Auth handled by adapter, not model. |
-| Knowledge Query | RAG retrieval, SKILL.md lookup | Returns ranked chunks with relevance score. Max 5 chunks per call. |
-| Memory R/W | Short-term context, long-term persistent | Short-term: current session. Long-term: key-value JSON store, persisted across sessions. |
+| **Tool Category** | **Examples**                              | **Contract Requirements**                                                                |
+| ----------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Code Execution    | Python runner, Node.js runner, shell exec | Returns stdout, stderr, exit code, execution time. Supports iterative refinement loop.   |
+| Web Access        | Search, fetch, scrape, sitemap            | Returns structured result with source URL and timestamp. Rate-limit aware.               |
+| File System       | Read, write, diff, patch                  | Sandboxed to project root. Returns diff on write. Supports undo.                         |
+| External APIs     | GitHub, Jira, Slack, Google Workspace     | MCP-compatible. Auth handled by adapter, not model.                                      |
+| Knowledge Query   | RAG retrieval, SKILL.md lookup            | Returns ranked chunks with relevance score. Max 5 chunks per call.                       |
+| Memory R/W        | Short-term context, long-term persistent  | Short-term: current session. Long-term: key-value JSON store, persisted across sessions. |
 
 ## **4.3 Reasoning Budget System**
 
@@ -159,13 +159,13 @@ Budget levels are: nano (quick classification), standard (default), deep (comple
 
 ITFS ships with pre-configured domain profiles. Each profile bundles a default skill set, tool selection, reasoning budget, and routing preference:
 
-| **Domain** | **Default Model Tier** | **Key Tools** | **Reasoning Strategy** |
-| --- | --- | --- | --- |
-| AI Coding | Local 14B (DeepSeek-Coder, Qwen-Coder) | Code exec, file system, GitHub MCP | Sequential: generate → test → fix loop |
-| Mobile Coding (iOS/Android) | Local 14B + Cloud for architecture | Code exec, simulator runner, file system | Parallel: Best-of-3 implementation candidates |
-| Web Scraping / Automation | Local 7B | Web fetch, DOM parser, sitemap tool | Sequential: plan → execute → verify |
-| AI Workflow Automation | Cloud orchestrator + local executor | All tools + memory R/W | Hybrid: cloud plan, local execute |
-| General Coding | Local 14B | Code exec, file system, web search | Adaptive: budget set by complexity score |
+| **Domain**                  | **Default Model Tier**                 | **Key Tools**                            | **Reasoning Strategy**                        |
+| --------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------------- |
+| AI Coding                   | Local 14B (DeepSeek-Coder, Qwen-Coder) | Code exec, file system, GitHub MCP       | Sequential: generate → test → fix loop        |
+| Mobile Coding (iOS/Android) | Local 14B + Cloud for architecture     | Code exec, simulator runner, file system | Parallel: Best-of-3 implementation candidates |
+| Web Scraping / Automation   | Local 7B                               | Web fetch, DOM parser, sitemap tool      | Sequential: plan → execute → verify           |
+| AI Workflow Automation      | Cloud orchestrator + local executor    | All tools + memory R/W                   | Hybrid: cloud plan, local execute             |
+| General Coding              | Local 14B                              | Code exec, file system, web search       | Adaptive: budget set by complexity score      |
 
 # **5. Integration & Interoperability**
 
@@ -179,12 +179,12 @@ ITFS uses an adapter pattern for model providers. All adapters expose a common i
 
 Built-in adapters:
 
-| **Adapter** | **Target** | **Notes** |
-| --- | --- | --- |
-| OllamaAdapter | Local Ollama server | Supports any quantized model via /api/chat |
-| AnthropicAdapter | Claude API | Recommended for L5 orchestration; supports extended thinking |
-| OpenAIAdapter | OpenAI API / compatible | Compatible with LM Studio, vLLM, Together AI, Groq |
-| LiteLLMAdapter | Unified proxy | Routes to any backend via LiteLLM proxy — recommended for production deployments |
+| **Adapter**      | **Target**              | **Notes**                                                                        |
+| ---------------- | ----------------------- | -------------------------------------------------------------------------------- |
+| OllamaAdapter    | Local Ollama server     | Supports any quantized model via /api/chat                                       |
+| AnthropicAdapter | Claude API              | Recommended for L5 orchestration; supports extended thinking                     |
+| OpenAIAdapter    | OpenAI API / compatible | Compatible with LM Studio, vLLM, Together AI, Groq                               |
+| LiteLLMAdapter   | Unified proxy           | Routes to any backend via LiteLLM proxy — recommended for production deployments |
 
 ## **5.2 MCP (Model Context Protocol) Integration**
 
@@ -198,14 +198,14 @@ This makes ITFS immediately compatible with the growing ecosystem of MCP servers
 
 ## **5.3 Framework Compatibility**
 
-| **Framework** | **Integration Mode** | **Maturity** |
-| --- | --- | --- |
-| LangChain / LangGraph | ITFS Execution Layer can be replaced with LangGraph StateGraph. Skill context injected via system message. | Stable |
-| AutoGen | ITFS agents expose AutoGen-compatible ConversableAgent interface. | Beta |
-| Claude Code | ITFS SKILL.md files are directly compatible with Claude Code's skills system. Share skills between ITFS and Claude Code deployments. | Stable |
-| OpenAI Agents SDK | ITFS Tool contracts map to OpenAI function calling schema. Adapter provided. | Stable |
-| CrewAI | ITFS agents can be wrapped as CrewAI Agents with Tool injection. | Beta |
-| LlamaIndex | ITFS Knowledge Layer can use LlamaIndex as the retrieval backend. | Stable |
+| **Framework**         | **Integration Mode**                                                                                                                 | **Maturity** |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| LangChain / LangGraph | ITFS Execution Layer can be replaced with LangGraph StateGraph. Skill context injected via system message.                           | Stable       |
+| AutoGen               | ITFS agents expose AutoGen-compatible ConversableAgent interface.                                                                    | Beta         |
+| Claude Code           | ITFS SKILL.md files are directly compatible with Claude Code's skills system. Share skills between ITFS and Claude Code deployments. | Stable       |
+| OpenAI Agents SDK     | ITFS Tool contracts map to OpenAI function calling schema. Adapter provided.                                                         | Stable       |
+| CrewAI                | ITFS agents can be wrapped as CrewAI Agents with Tool injection.                                                                     | Beta         |
+| LlamaIndex            | ITFS Knowledge Layer can use LlamaIndex as the retrieval backend.                                                                    | Stable       |
 
 ## **5.4 Hybrid Cloud Routing — LiteLLM Integration**
 
@@ -217,17 +217,17 @@ For production deployments, ITFS recommends LiteLLM as the unified gateway (cons
 
 # **6. Non-Functional Requirements**
 
-| **Category** | **Requirement** | **Target** |
-| --- | --- | --- |
-| Latency | Time-to-first-token for local model on standard task | < 500ms on consumer GPU (RTX 3080+) |
-| Throughput | Concurrent agent sessions per local instance | > 4 parallel agents on 24GB VRAM |
-| Portability | Runtime support | Linux, macOS, Windows (via WSL2). Docker image provided. |
-| Extensibility | Adding a new Tool | < 30 lines of code. Tool auto-registered via decorator. |
-| Extensibility | Adding a new Skill | Author a SKILL.md file. Zero code. |
-| Interoperability | Model switching | Zero code change. Update MODEL_ROUTING.md only. |
-| Observability | Telemetry | OpenTelemetry traces per agent loop, per tool call, per model call. |
-| Privacy | Local-first data flow | No user data leaves the local machine unless explicitly routed to cloud adapter. |
-| Reliability | Cloud fallback on local failure | < 2s automatic failover to cloud adapter. |
+| **Category**     | **Requirement**                                      | **Target**                                                                       |
+| ---------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Latency          | Time-to-first-token for local model on standard task | < 500ms on consumer GPU (RTX 3080+)                                              |
+| Throughput       | Concurrent agent sessions per local instance         | > 4 parallel agents on 24GB VRAM                                                 |
+| Portability      | Runtime support                                      | Linux, macOS, Windows (via WSL2). Docker image provided.                         |
+| Extensibility    | Adding a new Tool                                    | < 30 lines of code. Tool auto-registered via decorator.                          |
+| Extensibility    | Adding a new Skill                                   | Author a SKILL.md file. Zero code.                                               |
+| Interoperability | Model switching                                      | Zero code change. Update MODEL_ROUTING.md only.                                  |
+| Observability    | Telemetry                                            | OpenTelemetry traces per agent loop, per tool call, per model call.              |
+| Privacy          | Local-first data flow                                | No user data leaves the local machine unless explicitly routed to cloud adapter. |
+| Reliability      | Cloud fallback on local failure                      | < 2s automatic failover to cloud adapter.                                        |
 
 # **7. Roadmap**
 
@@ -256,16 +256,16 @@ For production deployments, ITFS recommends LiteLLM as the unified gateway (cons
 
 # **8. Glossary**
 
-| **Term** | **Definition** |
-| --- | --- |
+| **Term**               | **Definition**                                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Inference-Time Scaling | Allocating more compute during inference (rather than pre-training) to improve model output quality. Methods include parallel sampling, iterative refinement, and chain-of-thought. |
-| SKILL.md | A structured Markdown file encoding expert domain knowledge as a prompt template consumable by any LLM at inference time. Open standard. |
-| Reasoning Budget | A per-task allocation of inference-time compute expressed in tokens or steps, governing how much test-time scaling to apply. |
-| Hybrid Orchestration | An architecture where a cloud frontier model handles planning/reasoning and local models handle task execution. |
-| MCP | Model Context Protocol. An open standard for tool/resource exposure to LLMs, enabling any MCP server to integrate with ITFS. |
-| Best-of-N | A parallel inference-time scaling strategy: generate N candidate outputs, select the best via a verifier or majority vote. |
-| Sequential Scaling | Iterative inference-time scaling: refine a single answer over multiple steps using feedback (e.g. code execution results). |
-| L1–L5 | ITFS layer numbering. L1 = Model, L2 = Skills/Knowledge, L3 = Tooling, L4 = Execution, L5 = Orchestration. |
+| SKILL.md               | A structured Markdown file encoding expert domain knowledge as a prompt template consumable by any LLM at inference time. Open standard.                                            |
+| Reasoning Budget       | A per-task allocation of inference-time compute expressed in tokens or steps, governing how much test-time scaling to apply.                                                        |
+| Hybrid Orchestration   | An architecture where a cloud frontier model handles planning/reasoning and local models handle task execution.                                                                     |
+| MCP                    | Model Context Protocol. An open standard for tool/resource exposure to LLMs, enabling any MCP server to integrate with ITFS.                                                        |
+| Best-of-N              | A parallel inference-time scaling strategy: generate N candidate outputs, select the best via a verifier or majority vote.                                                          |
+| Sequential Scaling     | Iterative inference-time scaling: refine a single answer over multiple steps using feedback (e.g. code execution results).                                                          |
+| L1–L5                  | ITFS layer numbering. L1 = Model, L2 = Skills/Knowledge, L3 = Tooling, L4 = Execution, L5 = Orchestration.                                                                          |
 
 ITFS Framework  —  SRS v1.0  —  May 2026  —  Draft for review
 
@@ -275,7 +275,7 @@ ITFS Framework  —  SRS v1.0  —  May 2026  —  Draft for review
 
 **Full Framework Specification (Reconstructed)**
 
-*Version 1.0 — May 2026*
+_Version 1.0 — May 2026_
 
 ---
 
@@ -307,7 +307,6 @@ can match or outperform frontier cloud models on **bounded, structured tasks** a
 ### ITFS Principle:
 
 > **Separate intelligence into layers with strict contracts**
-> 
 
 ---
 
@@ -416,13 +415,13 @@ Validate outputs before acceptance
 
 ### Types:
 
-| Type | Mechanism |
-| --- | --- |
-| Execution | Run code |
-| Syntax | Schema validation |
-| Self-consistency | Majority voting |
-| Reward model | Step scoring |
-| Human | Manual approval |
+| Type             | Mechanism         |
+| ---------------- | ----------------- |
+| Execution        | Run code          |
+| Syntax           | Schema validation |
+| Self-consistency | Majority voting   |
+| Reward model     | Step scoring      |
+| Human            | Manual approval   |
 
 ---
 
@@ -555,10 +554,8 @@ execute(input) → {
 ## 6.5 Key Rule
 
 > Tools do NOT contain logic
-> 
-> 
+>
 > Skills contain logic
-> 
 
 ---
 
@@ -598,13 +595,13 @@ Provides:
 
 ## 7.3 Memory System
 
-| Type | Scope |
-| --- | --- |
-| Working | current task |
-| Session | current session |
-| Episodic | past tasks |
+| Type     | Scope            |
+| -------- | ---------------- |
+| Working  | current task     |
+| Session  | current session  |
+| Episodic | past tasks       |
 | Semantic | global knowledge |
-| User | personalized |
+| User     | personalized     |
 
 ---
 
@@ -641,12 +638,12 @@ Selection logic:
 
 ## 8.4 Failure Handling
 
-| Failure | Response |
-| --- | --- |
-| Verification fail | Reflexion |
-| Tool error | Retry / abort |
-| Budget exceeded | Escalate |
-| No skill | Synthesize / escalate |
+| Failure           | Response              |
+| ----------------- | --------------------- |
+| Verification fail | Reflexion             |
+| Tool error        | Retry / abort         |
+| Budget exceeded   | Escalate              |
+| No skill          | Synthesize / escalate |
 
 ---
 
@@ -722,10 +719,8 @@ Pure inference
 ## 10.2 Key Principle
 
 > Model is NOT the system
-> 
-> 
+>
 > It is just a component
-> 
 
 ---
 
@@ -779,12 +774,10 @@ Each layer emits traces:
 This system is not about:
 
 > making LLMs smarter
-> 
 
 It is about:
 
 > **structuring intelligence around them**
-> 
 
 ---
 
@@ -801,7 +794,6 @@ This is NOT:
 This is:
 
 > **A full agent architecture framework**
-> 
 
 ---
 
@@ -821,10 +813,8 @@ We can now:
 ### Inference-Time First Stack · v1.0 · May 2026
 
 > **How to use this document**
-> 
-> 
+>
 > Every task below is self-contained. You do not need the SRS to start. Each task tells you what to build, what the acceptance criteria are, what interfaces to expose, and what not to do. Work top-to-bottom inside each phase. Do not start the next phase until the current one is green.
-> 
 
 ---
 
@@ -847,7 +837,6 @@ Each layer only talks to its immediate neighbours through typed contracts. No la
 ## Phase 0 — Repo Skeleton & Shared Types
 
 > **Goal:** One repo. Shared types. CI green. No business logic yet.
-> 
 
 ---
 
@@ -908,24 +897,35 @@ This is the most important package in the repo. Every inter-layer contract is de
 **File: `packages/types/src/index.ts`**
 
 ```tsx
-export type SemVer = string;   // "1.0.0"
-export type TaskId = string;    // uuid
-export type SkillId = string;   // "write_code@1.2.0"
+export type SemVer = string; // "1.0.0"
+export type TaskId = string; // uuid
+export type SkillId = string; // "write_code@1.2.0"
 export type ToolId = string;
 
 export type DomainTag =
-  | 'coding:ai'
-  | 'coding:mobile'
-  | 'coding:web'
-  | 'coding:general'
-  | 'web:scraping'
-  | 'web:automation'
-  | 'workflow'
-  | 'general';
+  | "coding:ai"
+  | "coding:mobile"
+  | "coding:web"
+  | "coding:general"
+  | "web:scraping"
+  | "web:automation"
+  | "workflow"
+  | "general";
 
-export type ReasoningStrategy = 'cot' | 'tot' | 'rat' | 'reflexion' | 'metacognitive';
-export type BudgetExceededPolicy = 'escalate' | 'return_best' | 'fail';
-export type VerifierType = 'execution' | 'syntax' | 'self_consistency' | 'process_reward' | 'human_in_loop' | 'null';
+export type ReasoningStrategy =
+  | "cot"
+  | "tot"
+  | "rat"
+  | "reflexion"
+  | "metacognitive";
+export type BudgetExceededPolicy = "escalate" | "return_best" | "fail";
+export type VerifierType =
+  | "execution"
+  | "syntax"
+  | "self_consistency"
+  | "process_reward"
+  | "human_in_loop"
+  | "null";
 
 export interface ReasoningBudget {
   strategy: ReasoningStrategy;
@@ -944,7 +944,7 @@ export interface TaskEnvelope {
   description: string;
   inputs?: Record<string, unknown>;
   budget: ReasoningBudget;
-  privacy_mode: 'local_only' | 'hybrid' | 'cloud_allowed';
+  privacy_mode: "local_only" | "hybrid" | "cloud_allowed";
 }
 
 export interface ToolCall {
@@ -973,7 +973,6 @@ export interface ToolResult {
 ## Phase 1 — L1 Model Layer
 
 > **Goal:** Abstract the model behind one interface so the rest of the system does not care whether the model is local or cloud.
-> 
 
 ---
 
@@ -985,8 +984,16 @@ A common adapter contract used by all providers.
 
 ```tsx
 export interface ModelAdapter {
-  complete(messages: Message[], tools?: ToolSpec[], budget?: ReasoningBudget): Promise<ModelResponse>;
-  stream(messages: Message[], tools?: ToolSpec[], budget?: ReasoningBudget): AsyncIterable<ModelDelta>;
+  complete(
+    messages: Message[],
+    tools?: ToolSpec[],
+    budget?: ReasoningBudget,
+  ): Promise<ModelResponse>;
+  stream(
+    messages: Message[],
+    tools?: ToolSpec[],
+    budget?: ReasoningBudget,
+  ): AsyncIterable<ModelDelta>;
   estimateTokens(messages: Message[]): Promise<number>;
 }
 ```
@@ -1037,7 +1044,6 @@ export interface ModelAdapter {
 ## Phase 2 — L3 Tooling Layer
 
 > **Goal:** Build deterministic actions the model can invoke safely.
-> 
 
 ---
 
@@ -1115,7 +1121,6 @@ export interface ModelAdapter {
 ## Phase 3 — L4 Skill Layer
 
 > **Goal:** Convert repeated workflows into reusable capability bundles.
-> 
 
 ---
 
@@ -1192,7 +1197,6 @@ skills/
 ## Phase 4 — L2 Knowledge Layer
 
 > **Goal:** Give the system durable context beyond the current prompt window.
-> 
 
 ---
 
@@ -1244,7 +1248,6 @@ skills/
 ## Phase 5 — L5 Reasoning Layer
 
 > **Goal:** Control how inference-time compute is spent.
-> 
 
 ---
 
@@ -1310,7 +1313,6 @@ skills/
 ## Phase 6 — L6 Orchestration Layer
 
 > **Goal:** Convert goals into plans, dependencies, retries, and subtasks.
-> 
 
 ---
 
@@ -1361,7 +1363,6 @@ skills/
 ## Phase 7 — L7 Hybrid Intelligence Layer
 
 > **Goal:** Decide local vs cloud execution with policy, not vibes.
-> 
 
 ---
 
@@ -1400,7 +1401,6 @@ skills/
 ## Phase 8 — Observability, Eval, and Hardening
 
 > **Goal:** Make the system measurable, debuggable, and safe to evolve.
-> 
 
 ---
 
