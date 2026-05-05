@@ -1,2 +1,3 @@
-export * from "./memory";
-export const name = "l2-knowledge";
+export * from './memory';
+export * from './retrieval';
+export const name = 'l2-knowledge';

@@ -1,4 +1,4 @@
-import { ModelAdapter, Message, TaskEnvelope } from "@itfs/types";
+import { ModelAdapter, Message, TaskEnvelope, Telemetry } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
 
 export class ReasoningLoop {
@@ -21,6 +21,7 @@ export class ReasoningLoop {
     };
 
     while (steps < budget.max_retries + 1) {
+      Telemetry.log("reasoning_step_start", { steps, task_id: task.task_id });
       const response = await this.model.complete(
         [systemPrompt, ...currentHistory],
         this.tools.listTools(),
@@ -29,21 +30,34 @@ export class ReasoningLoop {
 
       const message = response.message;
       currentHistory.push(message);
+      Telemetry.log("model_response", {
+        content: message.content,
+        tool_calls: message.tool_calls,
+      });
 
       if (!message.tool_calls || message.tool_calls.length === 0) {
         return message;
       }
 
       for (const toolCall of message.tool_calls) {
-        const result = await this.tools.execute(
-          toolCall.tool_id,
-          toolCall.input,
-        );
+        Telemetry.log('tool_call_start', {
+          tool_id: toolCall.tool_id,
+          input: toolCall.input,
+        });
+        const result = await this.tools.execute(toolCall.tool_id, toolCall.input);
+        if (toolCall.id) {
+          result.tool_call_id = toolCall.id;
+        }
+        Telemetry.log('tool_call_end', {
+          tool_id: toolCall.tool_id,
+          success: result.success,
+        });
         currentHistory.push({
-          role: "tool",
+          role: 'tool',
           content: JSON.stringify(result.output || result.error),
+          tool_call_id: toolCall.id,
           tool_result: result,
-        } as Message);
+        });
       }
 
       steps++;

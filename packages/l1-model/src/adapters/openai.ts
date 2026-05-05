@@ -40,6 +40,15 @@ export class OpenAIAdapter implements ModelAdapter {
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
+          tool_call_id: m.tool_call_id,
+          tool_calls: m.tool_calls?.map((tc) => ({
+            id: tc.id,
+            type: 'function',
+            function: {
+              name: tc.tool_id,
+              arguments: JSON.stringify(tc.input),
+            },
+          })),
         })),
         tools: tools?.map((t) => ({
           type: "function",
@@ -63,7 +72,8 @@ export class OpenAIAdapter implements ModelAdapter {
         role: "assistant",
         content: choice.message.content,
         tool_calls: choice.message.tool_calls?.map(
-          (tc: { function: { name: string; arguments: string } }) => ({
+          (tc: { id: string; function: { name: string; arguments: string } }) => ({
+            id: tc.id,
             tool_id: tc.function.name,
             input: JSON.parse(tc.function.arguments),
           }),
@@ -93,6 +103,15 @@ export class OpenAIAdapter implements ModelAdapter {
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
+          tool_call_id: m.tool_call_id,
+          tool_calls: m.tool_calls?.map((tc) => ({
+            id: tc.id,
+            type: 'function',
+            function: {
+              name: tc.tool_id,
+              arguments: JSON.stringify(tc.input),
+            },
+          })),
         })),
         stream: true,
         tools: tools?.map((t) => ({
@@ -135,11 +154,10 @@ export class OpenAIAdapter implements ModelAdapter {
             yield {
               content: delta.content,
               tool_calls: delta.tool_calls?.map(
-                (tc: { function: { name: string; arguments?: string } }) => ({
+                (tc: { id: string; function: { name: string; arguments?: string } }) => ({
+                  id: tc.id,
                   tool_id: tc.function.name,
-                  input: tc.function.arguments
-                    ? JSON.parse(tc.function.arguments)
-                    : undefined,
+                  input: tc.function.arguments ? JSON.parse(tc.function.arguments) : undefined,
                 }),
               ),
             };

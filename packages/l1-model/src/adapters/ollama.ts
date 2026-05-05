@@ -34,9 +34,22 @@ export class OllamaAdapter implements ModelAdapter {
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
+          tool_calls: m.tool_calls?.map((tc) => ({
+            function: {
+              name: tc.tool_id,
+              arguments: JSON.stringify(tc.input),
+            },
+          })),
         })),
         stream: false,
-        tools: tools,
+        tools: tools?.map((t) => ({
+          type: 'function',
+          function: {
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters,
+          },
+        })),
       }),
     });
 
@@ -72,9 +85,22 @@ export class OllamaAdapter implements ModelAdapter {
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,
+          tool_calls: m.tool_calls?.map((tc) => ({
+            function: {
+              name: tc.tool_id,
+              arguments: JSON.stringify(tc.input),
+            },
+          })),
         })),
         stream: true,
-        tools: tools,
+        tools: tools?.map((t) => ({
+          type: 'function',
+          function: {
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters,
+          },
+        })),
       }),
     });
 
@@ -86,20 +112,29 @@ export class OllamaAdapter implements ModelAdapter {
     if (!reader) return;
 
     const decoder = new TextDecoder();
+    let buffer = '';
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter((l) => l.trim());
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
+        if (!line.trim()) continue;
         try {
           const data = JSON.parse(line);
           if (data.done) break;
           yield {
             content: data.message?.content,
-            tool_calls: data.message?.tool_calls,
+            tool_calls: data.message?.tool_calls?.map(
+              (tc: { function: { name: string; arguments: string } }) => ({
+                tool_id: tc.function.name,
+                input: JSON.parse(tc.function.arguments),
+              }),
+            ),
           };
         } catch (e) {
           console.error("Error parsing Ollama stream chunk", e);

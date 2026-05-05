@@ -49,6 +49,7 @@ export interface TaskEnvelope {
 }
 
 export interface ToolCall {
+  id?: string;
   tool_id: ToolId;
   input: unknown;
   timeout_ms?: number;
@@ -56,6 +57,7 @@ export interface ToolCall {
 }
 
 export interface ToolResult {
+  tool_call_id?: string;
   success: boolean;
   output: unknown;
   error?: string;
@@ -64,7 +66,8 @@ export interface ToolResult {
 
 export interface Message {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: string | null;
+  tool_call_id?: string;
   tool_calls?: ToolCall[];
   tool_result?: ToolResult;
 }
@@ -103,3 +106,26 @@ export interface ModelAdapter {
   estimateTokens(messages: Message[]): Promise<number>;
 }
 export const name = "types";
+
+export interface Trace {
+  timestamp: number;
+  event: string;
+  data: unknown;
+}
+
+export class Telemetry {
+  private static traces: Trace[] = [];
+
+  static log(event: string, data: unknown) {
+    this.traces.push({
+      timestamp: Date.now(),
+      event,
+      data
+    });
+    console.log(`[TRACE] ${event}`, data);
+  }
+
+  static getTraces() {
+    return this.traces;
+  }
+}
