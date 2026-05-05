@@ -29,6 +29,7 @@ export class OpenAIAdapter implements ModelAdapter {
     tools?: ToolSpec[],
     _budget?: ReasoningBudget,
   ): Promise<ModelResponse> {
+    const start = Date.now();
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -66,7 +67,12 @@ export class OpenAIAdapter implements ModelAdapter {
     }
 
     const data = await response.json();
+    const latency = Date.now() - start;
     const choice = data.choices[0];
+
+    // Simplified cost calculation: $10 per 1M tokens
+    const cost = (data.usage.total_tokens / 1_000_000) * 10;
+
     return {
       message: {
         role: "assistant",
@@ -86,6 +92,12 @@ export class OpenAIAdapter implements ModelAdapter {
         prompt_tokens: data.usage.prompt_tokens,
         completion_tokens: data.usage.completion_tokens,
         total_tokens: data.usage.total_tokens,
+      },
+      metadata: {
+        provider: "openai",
+        model: this.model,
+        latency_ms: latency,
+        cost_usd: cost,
       },
     };
   }

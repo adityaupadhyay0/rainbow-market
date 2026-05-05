@@ -26,6 +26,7 @@ export class OllamaAdapter implements ModelAdapter {
     tools?: ToolSpec[],
     _budget?: ReasoningBudget,
   ): Promise<ModelResponse> {
+    const start = Date.now();
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,6 +59,7 @@ export class OllamaAdapter implements ModelAdapter {
     }
 
     const data = await response.json();
+    const latency = Date.now() - start;
     return {
       message: {
         role: "assistant",
@@ -68,6 +70,12 @@ export class OllamaAdapter implements ModelAdapter {
         prompt_tokens: data.prompt_eval_count || 0,
         completion_tokens: data.eval_count || 0,
         total_tokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
+      },
+      metadata: {
+        provider: "ollama",
+        model: this.model,
+        latency_ms: latency,
+        cost_usd: 0, // Local is free!
       },
     };
   }

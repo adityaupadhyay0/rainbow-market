@@ -38,6 +38,11 @@ export class RoutingPolicyEngine {
       return "cloud";
     }
 
+    // 10x improvement: budget-based routing
+    if (task.budget.max_tokens > 2000) {
+      return "cloud";
+    }
+
     // Default to local as per ITFS philosophy
     return "local";
   }

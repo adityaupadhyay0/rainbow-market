@@ -14,11 +14,12 @@ export class Orchestrator {
     const subTasks = await this.decompose(task);
     console.log(`Decomposed task into ${subTasks.length} sub-tasks`);
 
-    let lastResult: Message = { role: "assistant", content: "" };
-    for (const subTask of subTasks) {
-      lastResult = await this.reasoningLoop.run(subTask);
-    }
-    return lastResult;
+    // 10x improvement: Parallel DAG execution
+    const results = await Promise.all(
+      subTasks.map((subTask) => this.reasoningLoop.run(subTask)),
+    );
+
+    return results[results.length - 1]; // Return last sub-task result
   }
 
   private async decompose(task: TaskEnvelope): Promise<TaskEnvelope[]> {

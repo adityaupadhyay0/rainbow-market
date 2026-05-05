@@ -25,13 +25,13 @@ export class ReadFileTool implements Tool {
       return {
         success: false,
         output: null,
-        error: 'Path out of bounds',
+        error: "Path out of bounds",
         duration_ms: 0,
       };
     }
 
     try {
-      const content = await fs.readFile(resolvedPath, 'utf-8');
+      const content = await fs.readFile(resolvedPath, "utf-8");
       return { success: true, output: content, duration_ms: 0 };
     } catch (e: unknown) {
       return {
@@ -70,14 +70,14 @@ export class WriteFileTool implements Tool {
       return {
         success: false,
         output: null,
-        error: 'Path out of bounds',
+        error: "Path out of bounds",
         duration_ms: 0,
       };
     }
 
     try {
       await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
-      await fs.writeFile(resolvedPath, content, 'utf-8');
+      await fs.writeFile(resolvedPath, content, "utf-8");
       return {
         success: true,
         output: `File written to ${filePath}`,

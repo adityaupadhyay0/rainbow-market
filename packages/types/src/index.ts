@@ -85,6 +85,12 @@ export interface ModelResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+  metadata: {
+    provider: string;
+    model: string;
+    latency_ms: number;
+    cost_usd?: number;
+  };
 }
 
 export interface ModelDelta {

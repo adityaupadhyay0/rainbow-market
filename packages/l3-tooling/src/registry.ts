@@ -6,8 +6,15 @@ export interface Tool {
   execute(input: unknown): Promise<ToolResult>;
 }
 
+export interface ToolStats {
+  callCount: number;
+  totalDurationMs: number;
+  lastUsed?: number;
+}
+
 export class ToolRegistry {
   private tools: Map<ToolId, Tool> = new Map();
+  private stats: Map<ToolId, ToolStats> = new Map();
   private allowedScopes: Set<string> = new Set(["*"]);
 
   setAllowedScopes(scopes: string[]) {
@@ -24,6 +31,14 @@ export class ToolRegistry {
 
   listTools(): ToolSpec[] {
     return Array.from(this.tools.values()).map((t) => t.spec);
+  }
+
+  getStats(id: ToolId): ToolStats | undefined {
+    return this.stats.get(id);
+  }
+
+  getAllStats(): Record<ToolId, ToolStats> {
+    return Object.fromEntries(this.stats);
   }
 
   async execute(id: ToolId, input: unknown): Promise<ToolResult> {
@@ -53,9 +68,22 @@ export class ToolRegistry {
     const start = Date.now();
     try {
       const result = await tool.execute(input);
+      const duration = Date.now() - start;
+
+      // Update stats
+      const currentStats = this.stats.get(id) || {
+        callCount: 0,
+        totalDurationMs: 0,
+      };
+      this.stats.set(id, {
+        callCount: currentStats.callCount + 1,
+        totalDurationMs: currentStats.totalDurationMs + duration,
+        lastUsed: Date.now(),
+      });
+
       return {
         ...result,
-        duration_ms: Date.now() - start,
+        duration_ms: duration,
       };
     } catch (e: unknown) {
       return {

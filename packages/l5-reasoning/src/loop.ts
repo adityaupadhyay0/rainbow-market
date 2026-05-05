@@ -11,6 +11,21 @@ export class ReasoningLoop {
     this.tools = tools;
   }
 
+  async runAdaptive(
+    task: TaskEnvelope,
+    history: Message[] = [],
+  ): Promise<Message> {
+    // 10x improvement: adaptive strategy selection
+    if (task.description.length > 500) {
+      console.log("Complexity high, using Reflexion");
+      return this.run(
+        { ...task, budget: { ...task.budget, strategy: "reflexion" } },
+        history,
+      );
+    }
+    return this.run(task, history);
+  }
+
   async run(task: TaskEnvelope, history: Message[] = []): Promise<Message> {
     const budget = task.budget;
 

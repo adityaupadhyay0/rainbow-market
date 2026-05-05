@@ -1,3 +1,5 @@
+import * as fs from "node:fs/promises";
+
 export interface RetrievalResult {
   content: string;
   score: number;
@@ -7,6 +9,26 @@ export interface RetrievalResult {
 export class SimpleVectorStore {
   private documents: { content: string; metadata?: Record<string, unknown> }[] =
     [];
+  private filePath?: string;
+
+  constructor(filePath?: string) {
+    this.filePath = filePath;
+  }
+
+  async load() {
+    if (!this.filePath) return;
+    try {
+      const data = await fs.readFile(this.filePath, "utf-8");
+      this.documents = JSON.parse(data);
+    } catch {
+      // Ignore
+    }
+  }
+
+  async save() {
+    if (!this.filePath) return;
+    await fs.writeFile(this.filePath, JSON.stringify(this.documents, null, 2));
+  }
 
   addDocument(content: string, metadata?: Record<string, unknown>) {
     this.documents.push({ content, metadata });
