@@ -181,4 +181,15 @@ export class OpenAIAdapter implements ModelAdapter {
     const text = messages.map((m) => m.content).join(" ");
     return Math.ceil(text.length / 4);
   }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
 }

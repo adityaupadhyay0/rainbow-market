@@ -1,15 +1,17 @@
-import { TaskEnvelope, Message } from "@itfs/types";
+import { TaskEnvelope, Message, ModelAdapter } from "@itfs/types";
 import { ReasoningLoop } from "@itfs/l5-reasoning";
 
 export class Orchestrator {
   private reasoningLoop: ReasoningLoop;
+  private plannerModel?: ModelAdapter;
 
-  constructor(reasoningLoop: ReasoningLoop) {
+  constructor(reasoningLoop: ReasoningLoop, plannerModel?: ModelAdapter) {
     this.reasoningLoop = reasoningLoop;
+    this.plannerModel = plannerModel;
   }
 
   async execute(task: TaskEnvelope): Promise<Message> {
-    const subTasks = this.decompose(task);
+    const subTasks = await this.decompose(task);
     console.log(`Decomposed task into ${subTasks.length} sub-tasks`);
 
     let lastResult: Message = { role: "assistant", content: "" };
@@ -19,7 +21,31 @@ export class Orchestrator {
     return lastResult;
   }
 
-  private decompose(task: TaskEnvelope): TaskEnvelope[] {
+  private async decompose(task: TaskEnvelope): Promise<TaskEnvelope[]> {
+    if (this.plannerModel) {
+      // 10x improvement: LLM-driven planning
+      const response = await this.plannerModel.complete([
+        {
+          role: "system",
+          content:
+            "Break the following task into a list of standalone sub-tasks. Return only a JSON array of strings.",
+        },
+        { role: "user", content: task.description },
+      ]);
+
+      try {
+        const parts = JSON.parse(response.message.content || "[]");
+        return parts.map((part: string, i: number) => ({
+          ...task,
+          task_id: `${task.task_id}-sub-${i}`,
+          title: `${task.title} (Part ${i + 1})`,
+          description: part,
+        }));
+      } catch {
+        // Fallback to keyword-based
+      }
+    }
+
     // Simple decomposition mock: if description contains "and", split it
     if (task.description.includes(" and ")) {
       const parts = task.description.split(" and ");

@@ -18,16 +18,20 @@ export class ReadFileTool implements Tool {
 
   async execute(input: unknown): Promise<ToolResult> {
     const { path: filePath } = input as { path: string };
-    if (filePath.includes("..")) {
+    const root = process.cwd();
+    const resolvedPath = path.resolve(root, filePath);
+
+    if (!resolvedPath.startsWith(root)) {
       return {
         success: false,
         output: null,
-        error: "Path out of bounds",
+        error: 'Path out of bounds',
         duration_ms: 0,
       };
     }
+
     try {
-      const content = await fs.readFile(filePath, "utf-8");
+      const content = await fs.readFile(resolvedPath, 'utf-8');
       return { success: true, output: content, duration_ms: 0 };
     } catch (e: unknown) {
       return {
@@ -59,17 +63,21 @@ export class WriteFileTool implements Tool {
       path: string;
       content: string;
     };
-    if (filePath.includes("..")) {
+    const root = process.cwd();
+    const resolvedPath = path.resolve(root, filePath);
+
+    if (!resolvedPath.startsWith(root)) {
       return {
         success: false,
         output: null,
-        error: "Path out of bounds",
+        error: 'Path out of bounds',
         duration_ms: 0,
       };
     }
+
     try {
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, content, "utf-8");
+      await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
+      await fs.writeFile(resolvedPath, content, 'utf-8');
       return {
         success: true,
         output: `File written to ${filePath}`,

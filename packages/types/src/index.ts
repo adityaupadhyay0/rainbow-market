@@ -104,6 +104,7 @@ export interface ModelAdapter {
     budget?: ReasoningBudget,
   ): AsyncIterable<ModelDelta>;
   estimateTokens(messages: Message[]): Promise<number>;
+  healthCheck(): Promise<boolean>;
 }
 export const name = "types";
 

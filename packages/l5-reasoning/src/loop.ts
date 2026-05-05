@@ -18,6 +18,10 @@ export class ReasoningLoop {
       return this.runParallel(task, history);
     }
 
+    if (budget.strategy === "reflexion") {
+      return this.runReflexion(task, history);
+    }
+
     const currentHistory = [...history];
     let steps = 0;
 
@@ -111,5 +115,54 @@ export class ReasoningLoop {
 
     Telemetry.log("parallel_reasoning_end", { best_content: best.content });
     return best;
+  }
+
+  private async runReflexion(
+    task: TaskEnvelope,
+    history: Message[],
+  ): Promise<Message> {
+    let currentTask = task;
+    let attempt = 0;
+    let lastResult: Message = { role: "assistant", content: "" };
+
+    while (attempt < task.budget.max_retries) {
+      Telemetry.log("reflexion_attempt_start", {
+        attempt,
+        task_id: task.task_id,
+      });
+
+      // Generate
+      lastResult = await this.run(
+        {
+          ...currentTask,
+          budget: { ...task.budget, strategy: "cot" },
+        },
+        history,
+      );
+
+      // Critique
+      const critiqueResponse = await this.model.complete([
+        {
+          role: "system",
+          content:
+            "You are a critical reviewer. Critique the following output and suggest improvements.",
+        },
+        { role: "user", content: lastResult.content || "" },
+      ]);
+
+      Telemetry.log("reflexion_critique", {
+        critique: critiqueResponse.message.content,
+      });
+
+      // Update task for next iteration
+      currentTask = {
+        ...task,
+        description: `${task.description}\n\nPrevious attempt critique: ${critiqueResponse.message.content}`,
+      };
+
+      attempt++;
+    }
+
+    return lastResult;
   }
 }

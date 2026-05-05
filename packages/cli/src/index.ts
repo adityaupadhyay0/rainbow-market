@@ -29,8 +29,8 @@ export async function run() {
   tools.register(new RetrievalTool(_store));
 
   const reasoning = new ReasoningLoop(model, tools);
-  const orchestrator = new Orchestrator(reasoning);
-  const policy = new RoutingPolicyEngine("Default Rules");
+  const orchestrator = new Orchestrator(reasoning, model); // Pass model as planner
+  const policy = new RoutingPolicyEngine('Default Rules');
   const gateway = new HybridGateway(orchestrator, policy);
 
   const tasks: TaskEnvelope[] = [
@@ -51,20 +51,20 @@ export async function run() {
       privacy_mode: "local_only",
     },
     {
-      task_id: "task-2",
-      domain: "coding:general",
-      title: "Complex Task",
-      description: "Write a python script and save it",
+      task_id: 'task-2',
+      domain: 'coding:general',
+      title: 'Complex Coding Task',
+      description: 'Write a python script and save it and then run it to verify',
       budget: {
-        strategy: "cot",
+        strategy: 'reflexion', // Demonstrate 10x reflexion
         max_tokens: 2000,
         max_depth: 10,
         max_branches: 1,
         max_retries: 5,
-        verifier: "execution",
-        on_budget_exceeded: "escalate",
+        verifier: 'execution',
+        on_budget_exceeded: 'escalate',
       },
-      privacy_mode: "hybrid",
+      privacy_mode: 'hybrid',
     },
   ];
 
