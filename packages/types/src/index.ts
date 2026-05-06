@@ -62,6 +62,32 @@ export interface ToolResult {
   duration_ms: number;
 }
 
+export interface VerifierResult {
+  valid: boolean;
+  score: number;
+  feedback?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ReasoningStep {
+  step_id: string;
+  thought: string;
+  action?: ToolCall;
+  observation?: ToolResult;
+  verification?: VerifierResult;
+  duration_ms: number;
+}
+
+export interface ReasoningTrace {
+  task_id: TaskId;
+  steps: ReasoningStep[];
+  strategy: ReasoningStrategy;
+  total_duration_ms: number;
+  tokens_used: number;
+  success: boolean;
+  final_output?: string;
+}
+
 export interface Message {
   role: "system" | "user" | "assistant" | "tool";
   content: string;
