@@ -5,24 +5,28 @@ import {
   ReasoningBudget,
   Message,
   ModelResponse,
-  ModelDelta
+  ModelDelta,
 } from "@itfs/types";
 
 class MockModelAdapter implements ModelAdapter {
   complete = vi.fn().mockResolvedValue({
-    message: { role: "assistant", content: "This is a reasoned response from the mock model." },
-    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+    message: {
+      role: "assistant",
+      content: "This is a reasoned response from the mock model.",
+    },
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
   } as ModelResponse);
 
-  async *stream(_messages: Message[]): AsyncIterable<ModelDelta> {
+  async *stream(_m: Message[]): AsyncIterable<ModelDelta> {
     yield { content: "Mock stream" };
   }
 
-  async estimateTokens(_messages: Message[]): Promise<number> {
+  async estimateTokens(_m: Message[]): Promise<number> {
     return 10;
   }
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 describe("ReasoningEngine", () => {
   const engine = new ReasoningEngine();
   const mockModel = new MockModelAdapter();
@@ -36,7 +40,7 @@ describe("ReasoningEngine", () => {
       max_depth: 1,
       max_retries: 0,
       verifier: "null",
-      on_budget_exceeded: "fail"
+      on_budget_exceeded: "fail",
     };
 
     const { response, trace } = await engine.solve(mockModel, messages, budget);
@@ -55,11 +59,15 @@ describe("ReasoningEngine", () => {
     mockModel.complete
       .mockResolvedValueOnce({
         message: { role: "assistant", content: "Too short" },
-        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 }
+        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
       })
       .mockResolvedValueOnce({
-        message: { role: "assistant", content: "This is a much longer response that should pass the mock verification heuristic." },
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }
+        message: {
+          role: "assistant",
+          content:
+            "This is a much longer response that should pass the mock verification heuristic.",
+        },
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
       });
 
     const budget: ReasoningBudget = {
@@ -69,7 +77,7 @@ describe("ReasoningEngine", () => {
       max_depth: 3,
       max_retries: 3,
       verifier: "execution",
-      on_budget_exceeded: "fail"
+      on_budget_exceeded: "fail",
     };
 
     const { response, trace } = await engine.solve(mockModel, messages, budget);
@@ -82,7 +90,54 @@ describe("ReasoningEngine", () => {
   });
 
   it("should throw error for unsupported strategy", async () => {
-    const budget = { strategy: "invalid" as any } as ReasoningBudget;
-    await expect(engine.solve(mockModel, messages, budget)).rejects.toThrow("Unsupported reasoning strategy");
+    const budget = { strategy: "invalid" as unknown as any } as ReasoningBudget;
+    await expect(engine.solve(mockModel, messages, budget)).rejects.toThrow(
+      "Unsupported reasoning strategy",
+    );
+  });
+
+  it("should execute S* strategy with iterative debugging and selection", async () => {
+    mockModel.complete.mockClear();
+
+    // Mock sequence:
+    // 1. Branch 0 Round 0 (No code -> fail)
+    // 2. Branch 0 Round 1 (Code -> success)
+    // 3. Selection (Adaptive Input Generation)
+    mockModel.complete
+      .mockResolvedValueOnce({
+        message: { role: "assistant", content: "I will write some code." },
+        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+      })
+      .mockResolvedValueOnce({
+        message: {
+          role: "assistant",
+          content: "Here is the code:\n```javascript\n1 + 1\n```",
+        },
+        usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+      })
+      .mockResolvedValueOnce({
+        message: {
+          role: "assistant",
+          content: "Test input:\n```javascript\nconsole.log('test')\n```",
+        },
+        usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+      });
+
+    const budget: ReasoningBudget = {
+      strategy: "sstar",
+      max_tokens: 500,
+      max_branches: 1, // Use 1 branch to keep it simple for mock
+      max_depth: 1,
+      max_retries: 2,
+      verifier: "execution",
+      on_budget_exceeded: "fail",
+    };
+
+    const { response, trace } = await engine.solve(mockModel, messages, budget);
+
+    expect(trace.strategy).toBe("sstar");
+    expect(trace.success).toBe(true);
+    expect(response.message.content).toContain("```javascript");
+    expect(trace.steps.length).toBe(2); // Initial + 1 retry
   });
 });

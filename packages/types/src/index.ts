@@ -18,6 +18,7 @@ export type ReasoningStrategy =
   | "tot"
   | "rat"
   | "reflexion"
+  | "sstar"
   | "metacognitive";
 export type BudgetExceededPolicy = "escalate" | "return_best" | "fail";
 export type VerifierType =
