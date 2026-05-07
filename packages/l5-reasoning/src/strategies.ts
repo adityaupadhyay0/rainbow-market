@@ -5,14 +5,15 @@ import {
   ModelResponse,
   ReasoningTrace,
   ReasoningStep,
-  VerifierResult
+  VerifierResult,
 } from "@itfs/types";
+import { LocalCodeExecutionTool } from "@itfs/l3-tooling";
 
 export interface StrategyExecutor {
   execute(
     model: ModelAdapter,
     messages: Message[],
-    budget: ReasoningBudget
+    budget: ReasoningBudget,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }>;
 }
 
@@ -20,7 +21,7 @@ export class BestOfNStrategy implements StrategyExecutor {
   async execute(
     model: ModelAdapter,
     messages: Message[],
-    budget: ReasoningBudget
+    budget: ReasoningBudget,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const n = budget.max_branches ?? 1;
     const startTime = Date.now();
@@ -30,7 +31,7 @@ export class BestOfNStrategy implements StrategyExecutor {
         const branchStart = Date.now();
         const response = await model.complete(messages, [], budget);
         return { response, duration: Date.now() - branchStart, index: i };
-      })
+      }),
     );
 
     // In a real system, we'd use a PRM (Process Reward Model) or a Verifier here.
@@ -47,12 +48,157 @@ export class BestOfNStrategy implements StrategyExecutor {
       })),
       strategy: budget.strategy,
       total_duration_ms: Date.now() - startTime,
-      tokens_used: candidates.reduce((sum, c) => sum + c.response.usage.total_tokens, 0),
+      tokens_used: candidates.reduce(
+        (sum, c) => sum + c.response.usage.total_tokens,
+        0,
+      ),
       success: true,
-      final_output: bestCandidate.response.message.content
+      final_output: bestCandidate.response.message.content,
     };
 
     return { response: bestCandidate.response, trace };
+  }
+}
+
+export class SStarStrategy implements StrategyExecutor {
+  private executor = new LocalCodeExecutionTool();
+
+  async execute(
+    model: ModelAdapter,
+    messages: Message[],
+    budget: ReasoningBudget,
+  ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
+    const startTime = Date.now();
+    const n = budget.max_branches ?? 1;
+    const maxRetries = budget.max_retries ?? 2;
+
+    // Stage 1: Generation & Iterative Debugging
+    const branches = await Promise.all(
+      Array.from({ length: n }).map(async (_, i) => {
+        const branchMessages = [...messages];
+        let lastResp: ModelResponse | null = null;
+        const branchSteps: ReasoningStep[] = [];
+        let branchTokens = 0;
+
+        for (let r = 0; r <= maxRetries; r++) {
+          const stepStart = Date.now();
+          const resp = await model.complete(branchMessages, [], budget);
+          lastResp = resp;
+          branchTokens += resp.usage.total_tokens;
+
+          const verif = await this.verifyWithExecution(resp.message.content);
+          branchSteps.push({
+            step_id: `branch-${i}-round-${r}`,
+            thought: resp.message.content,
+            verification: verif,
+            duration_ms: Date.now() - stepStart,
+          });
+
+          if (verif.valid) break;
+
+          branchMessages.push(resp.message);
+          branchMessages.push({
+            role: "user",
+            content: `Execution feedback: ${verif.feedback}. Please fix the code.`,
+          });
+        }
+        return {
+          response: lastResp!,
+          steps: branchSteps,
+          tokens: branchTokens,
+        };
+      }),
+    );
+
+    // Stage 2: Selection via Adaptive Input Generation
+    const validBranches = branches.filter(
+      (b) => b.steps[b.steps.length - 1].verification?.valid,
+    );
+    const candidates = validBranches.length > 0 ? validBranches : branches;
+
+    let bestBranch = candidates[0];
+    if (candidates.length > 1) {
+      // Pairwise comparison with adaptive input generation
+      for (let i = 1; i < candidates.length; i++) {
+        const branchA = bestBranch;
+        const branchB = candidates[i];
+
+        const selectionPrompt: Message[] = [
+          ...messages,
+          {
+            role: "user",
+            content: `I have two candidate solutions. Please generate a simple Javascript test input that could produce different outputs for them.\n\nSolution A:\n${branchA.response.message.content}\n\nSolution B:\n${branchB.response.message.content}\n\nProvide only the test input code.`,
+          },
+        ];
+
+        const inputGenResp = await model.complete(selectionPrompt, [], budget);
+        const testInput =
+          inputGenResp.message.content.match(
+            /```(?:javascript|js)?\n([\s\S]*?)```/,
+          )?.[1] ?? "";
+
+        if (testInput) {
+          const runA = await this.executor.execute(
+            `${this.extractCode(branchA.response.message.content)}\n${testInput}`,
+          );
+          const runB = await this.executor.execute(
+            `${this.extractCode(branchB.response.message.content)}\n${testInput}`,
+          );
+
+          if (runA.success && !runB.success) {
+            bestBranch = branchA;
+          } else if (runB.success && !runA.success) {
+            bestBranch = branchB;
+          } else if (runA.success && runB.success) {
+            // If both succeed but produce different outputs, S* preference logic applies.
+            // Here we prioritize the newer candidate if it produces a different (novel) output.
+            if (JSON.stringify(runA.output) !== JSON.stringify(runB.output)) {
+              bestBranch = branchB;
+            }
+          }
+        }
+      }
+    }
+
+    const trace: ReasoningTrace = {
+      task_id: `sstar-${Math.random().toString(36).substring(7)}`,
+      steps: branches.flatMap((b) => b.steps),
+      strategy: budget.strategy,
+      total_duration_ms: Date.now() - startTime,
+      tokens_used: branches.reduce((s, b) => s + b.tokens, 0),
+      success:
+        bestBranch.steps[bestBranch.steps.length - 1].verification?.valid ??
+        false,
+      final_output: bestBranch.response.message.content,
+    };
+
+    return { response: bestBranch.response, trace };
+  }
+
+  private extractCode(content: string): string {
+    return (
+      content.match(/```(?:javascript|typescript|js)?\n([\s\S]*?)```/)?.[1] ??
+      ""
+    );
+  }
+
+  private async verifyWithExecution(content: string): Promise<VerifierResult> {
+    const code = this.extractCode(content);
+    if (!code) {
+      return {
+        valid: false,
+        score: 0,
+        feedback: "No code block found. Please wrap code in ```.",
+      };
+    }
+
+    const result = await this.executor.execute(code);
+    return {
+      valid: result.success,
+      score: result.success ? 1 : 0,
+      feedback: result.success ? undefined : `Runtime error: ${result.error}`,
+      metadata: { execution: result },
+    };
   }
 }
 
@@ -60,7 +206,7 @@ export class ReflexionStrategy implements StrategyExecutor {
   async execute(
     model: ModelAdapter,
     messages: Message[],
-    budget: ReasoningBudget
+    budget: ReasoningBudget,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const steps: ReasoningStep[] = [];
@@ -76,7 +222,9 @@ export class ReflexionStrategy implements StrategyExecutor {
       tokensUsed += response.usage.total_tokens;
 
       // Mock verification - in production this calls L5 Verifier System
-      const verification: VerifierResult = this.verify(response.message.content);
+      const verification: VerifierResult = this.verify(
+        response.message.content,
+      );
 
       steps.push({
         step_id: `refinement-${i}`,
@@ -96,7 +244,8 @@ export class ReflexionStrategy implements StrategyExecutor {
       });
     }
 
-    if (!lastResponse) throw new Error("Reasoning failed to produce a response");
+    if (!lastResponse)
+      throw new Error("Reasoning failed to produce a response");
 
     const trace: ReasoningTrace = {
       task_id: `trace-${Math.random().toString(36).substring(7)}`,
@@ -105,7 +254,7 @@ export class ReflexionStrategy implements StrategyExecutor {
       total_duration_ms: Date.now() - startTime,
       tokens_used: tokensUsed,
       success: steps[steps.length - 1].verification?.valid ?? false,
-      final_output: lastResponse.message.content
+      final_output: lastResponse.message.content,
     };
 
     return { response: lastResponse, trace };
@@ -117,7 +266,7 @@ export class ReflexionStrategy implements StrategyExecutor {
     return {
       valid,
       score: valid ? 1 : 0,
-      feedback: valid ? undefined : "Response too concise, needs more detail."
+      feedback: valid ? undefined : "Response too concise, needs more detail.",
     };
   }
 }
