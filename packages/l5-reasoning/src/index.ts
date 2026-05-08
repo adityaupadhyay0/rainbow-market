@@ -5,6 +5,7 @@ import {
   ModelResponse,
   ReasoningTrace,
 } from "@itfs/types";
+import { ToolRegistry } from "@itfs/l3-tooling";
 import {
   BestOfNStrategy,
   ReflexionStrategy,
@@ -15,7 +16,7 @@ import {
 export class ReasoningEngine {
   private strategies: Map<string, StrategyExecutor>;
 
-  constructor() {
+  constructor(private registry?: ToolRegistry) {
     this.strategies = new Map();
     this.strategies.set("tot", new BestOfNStrategy());
     this.strategies.set("reflexion", new ReflexionStrategy());
@@ -35,7 +36,7 @@ export class ReasoningEngine {
       throw new Error(`Unsupported reasoning strategy: ${budget.strategy}`);
     }
 
-    return strategy.execute(model, messages, budget);
+    return strategy.execute(model, messages, budget, this.registry);
   }
 }
 

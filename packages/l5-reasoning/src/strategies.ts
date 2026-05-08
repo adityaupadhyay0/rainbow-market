@@ -7,13 +7,14 @@ import {
   ReasoningStep,
   VerifierResult,
 } from "@itfs/types";
-import { LocalCodeExecutionTool } from "@itfs/l3-tooling";
+import { ToolRegistry } from "@itfs/l3-tooling";
 
 export interface StrategyExecutor {
   execute(
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
+    registry?: ToolRegistry,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }>;
 }
 
@@ -22,6 +23,7 @@ export class BestOfNStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
+    _registry?: ToolRegistry,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const n = budget.max_branches ?? 1;
     const startTime = Date.now();
@@ -61,12 +63,11 @@ export class BestOfNStrategy implements StrategyExecutor {
 }
 
 export class SStarStrategy implements StrategyExecutor {
-  private executor = new LocalCodeExecutionTool();
-
   async execute(
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
+    registry?: ToolRegistry,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const n = budget.max_branches ?? 1;
@@ -86,7 +87,7 @@ export class SStarStrategy implements StrategyExecutor {
           lastResp = resp;
           branchTokens += resp.usage.total_tokens;
 
-          const verif = await this.verifyWithExecution(resp.message.content);
+          const verif = await this.verifyWithExecution(resp.message.content, registry);
           branchSteps.push({
             step_id: `branch-${i}-round-${r}`,
             thought: resp.message.content,
@@ -138,12 +139,21 @@ export class SStarStrategy implements StrategyExecutor {
           )?.[1] ?? "";
 
         if (testInput) {
-          const runA = await this.executor.execute(
-            `${this.extractCode(branchA.response.message.content)}\n${testInput}`,
-          );
-          const runB = await this.executor.execute(
-            `${this.extractCode(branchB.response.message.content)}\n${testInput}`,
-          );
+          const codeA = `${this.extractCode(branchA.response.message.content)}\n${testInput}`;
+          const codeB = `${this.extractCode(branchB.response.message.content)}\n${testInput}`;
+
+          const runA = registry
+            ? await registry.call({
+                tool_id: "local_code_execution",
+                input: { code: codeA },
+              })
+            : { success: false };
+          const runB = registry
+            ? await registry.call({
+                tool_id: "local_code_execution",
+                input: { code: codeB },
+              })
+            : { success: false };
 
           if (runA.success && !runB.success) {
             bestBranch = branchA;
@@ -182,7 +192,10 @@ export class SStarStrategy implements StrategyExecutor {
     );
   }
 
-  private async verifyWithExecution(content: string): Promise<VerifierResult> {
+  private async verifyWithExecution(
+    content: string,
+    registry?: ToolRegistry,
+  ): Promise<VerifierResult> {
     const code = this.extractCode(content);
     if (!code) {
       return {
@@ -192,7 +205,18 @@ export class SStarStrategy implements StrategyExecutor {
       };
     }
 
-    const result = await this.executor.execute(code);
+    if (!registry) {
+      return {
+        valid: false,
+        score: 0,
+        feedback: "Tool registry not available for verification.",
+      };
+    }
+
+    const result = await registry.call({
+      tool_id: "local_code_execution",
+      input: { code },
+    });
     return {
       valid: result.success,
       score: result.success ? 1 : 0,
@@ -207,6 +231,7 @@ export class ReflexionStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
+    _registry?: ToolRegistry,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const steps: ReasoningStep[] = [];
