@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { ToolRegistry, LocalCodeExecutionTool } from "@itfs/l3-tooling";
 import { ReasoningEngine } from "./index.js";
 import {
   ModelAdapter,
@@ -28,7 +29,9 @@ class MockModelAdapter implements ModelAdapter {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 describe("ReasoningEngine", () => {
-  const engine = new ReasoningEngine();
+  const registry = new ToolRegistry();
+  registry.registerTool(new LocalCodeExecutionTool());
+  const engine = new ReasoningEngine(registry);
   const mockModel = new MockModelAdapter();
   const messages: Message[] = [{ role: "user", content: "Solve 2+2" }];
 
