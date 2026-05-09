@@ -77,6 +77,9 @@ importers:
 
   packages/l6-orchestration:
     dependencies:
+      '@itfs/l5-reasoning':
+        specifier: workspace:*
+        version: link:../l5-reasoning
       '@itfs/types':
         specifier: workspace:*
         version: link:../types

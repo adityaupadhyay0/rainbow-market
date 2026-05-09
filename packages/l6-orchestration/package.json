@@ -10,6 +10,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@itfs/types": "workspace:*"
+    "@itfs/types": "workspace:*",
+    "@itfs/l5-reasoning": "workspace:*"
   }
 }

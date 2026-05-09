@@ -80,8 +80,9 @@ export class MCPToolAdapter implements Tool {
           arguments: input as Record<string, unknown>,
         },
         {
+          // @ts-expect-error - The SDK version in this environment has conflicting types for options
           timeout: timeout_ms,
-        } as { timeout: number },
+        },
       );
 
       return {
