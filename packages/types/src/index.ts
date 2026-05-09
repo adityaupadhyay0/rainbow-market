@@ -49,6 +49,28 @@ export interface TaskEnvelope {
   privacy_mode: "local_only" | "hybrid" | "cloud_allowed";
 }
 
+export interface SubTask {
+  subtask_id: string;
+  title: string;
+  description: string;
+  dependencies: string[];
+  status: "pending" | "running" | "completed" | "failed";
+  output?: unknown;
+}
+
+export interface TaskGraph {
+  task_id: TaskId;
+  subtasks: SubTask[];
+}
+
+export interface OrchestrationResult {
+  task_id: TaskId;
+  success: boolean;
+  subtask_traces: Record<string, ReasoningTrace>;
+  output: unknown;
+  error?: string;
+}
+
 export interface ToolCall {
   tool_id: ToolId;
   input: unknown;
