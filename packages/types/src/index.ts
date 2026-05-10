@@ -149,6 +149,34 @@ export interface ModelAdapter {
     tools?: ToolSpec[],
     budget?: ReasoningBudget,
   ): AsyncIterable<ModelDelta>;
+  embed(text: string | string[]): Promise<number[][]>;
   estimateTokens(messages: Message[]): Promise<number>;
 }
+
+export interface VectorDocument {
+  id: string;
+  content: string;
+  embedding?: number[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface VectorStore {
+  add(documents: VectorDocument[]): Promise<void>;
+  search(
+    query_embedding: number[],
+    limit: number,
+  ): Promise<(VectorDocument & { similarity: number })[]>;
+  delete(ids: string[]): Promise<void>;
+  clear(): Promise<void>;
+}
+
+export interface RetrievalResult {
+  documents: (VectorDocument & { similarity: number })[];
+  confidence: "correct" | "ambiguous" | "incorrect";
+}
+
+export interface Retriever {
+  retrieve(query: string, limit?: number): Promise<RetrievalResult>;
+}
+
 export const name = "types";

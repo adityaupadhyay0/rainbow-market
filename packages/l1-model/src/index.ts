@@ -105,6 +105,30 @@ export class OllamaAdapter implements ModelAdapter {
     }
   }
 
+  async embed(text: string | string[]): Promise<number[][]> {
+    const inputs = Array.isArray(text) ? text : [text];
+
+    return Promise.all(
+      inputs.map(async (input) => {
+        const response = await fetch(`${this.baseUrl}/api/embeddings`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: this.modelName,
+            prompt: input,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ollama Embedding API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.embedding;
+      }),
+    );
+  }
+
   async estimateTokens(messages: Message[]): Promise<number> {
     // Naive estimation: 4 chars per token
     return messages.reduce((acc, m) => acc + m.content.length / 4, 0);
@@ -228,6 +252,15 @@ export class AnthropicAdapter implements ModelAdapter {
         }
       }
     }
+  }
+
+  async embed(_text: string | string[]): Promise<number[][]> {
+    // Anthropic does not natively support embeddings via their primary API.
+    // In a real ITFS deployment, the router would direct this to an embedding-specific adapter (e.g., Voyage, OpenAI, or Local).
+    // For now, we throw a descriptive error to maintain interface compliance while flagging the limitation.
+    throw new Error(
+      "AnthropicAdapter does not support embeddings. Use OllamaAdapter or a dedicated embedding provider.",
+    );
   }
 
   async estimateTokens(messages: Message[]): Promise<number> {
