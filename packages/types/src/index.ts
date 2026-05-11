@@ -19,7 +19,55 @@ export type ReasoningStrategy =
   | "rat"
   | "reflexion"
   | "sstar"
+  | "autotts"
   | "metacognitive";
+
+export type ControllerActionType =
+  | "BRANCH"
+  | "CONTINUE"
+  | "PROBE"
+  | "PRUNE"
+  | "ANSWER";
+
+export interface ControllerAction {
+  type: ControllerActionType;
+  branchIndex?: number;
+}
+
+export interface ProbeSignal {
+  branchIndex: number;
+  depth: number;
+  answer: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ControllerState {
+  question: string;
+  maxBranches: number;
+  activeBranches: number[]; // indices of active branches
+  depths: Record<number, number>; // branchIndex -> depth
+  revealedProbes: ProbeSignal[];
+  remainingBudget: number;
+  totalCost: number;
+}
+
+export interface AutoTTSConfig {
+  gamma: number; // trade-off parameter for accuracy vs cost
+  beta?: number; // meta-hyper-parameter for the controller
+}
+
+export interface ReasoningTrajectory {
+  branchIndex: number;
+  intervals: string[]; // generated tokens/text per interval
+  probes: string[]; // probe answer at each interval end
+}
+
+export interface OfflineReplayData {
+  question: string;
+  answer: string; // ground truth
+  trajectories: ReasoningTrajectory[];
+}
+
 export type BudgetExceededPolicy = "escalate" | "return_best" | "fail";
 export type VerifierType =
   | "execution"
