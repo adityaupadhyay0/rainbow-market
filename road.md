@@ -19,20 +19,20 @@ Layered architecture (L1-L7):
 - TypeScript 5.x strict mode.
 - Linting and testing configured.
 - Core packages (L1, L2, L3, L5, L6) have initial implementations.
+- L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Enhance L3 Tooling (File system, Web access).
+Implement L4 Skill Layer (SKILL.md loader).
 
 # Queued Tasks
-1. Enhance L3 Tooling (File system, Web access).
-2. Implement L4 Skill Layer (SKILL.md loader).
-3. Mature L5 Reasoning (ToT, RAT).
-4. Implement L7 Hybrid Routing Policy.
-5. Implement Observability/Telemetry (L8).
-6. Build CLI for itfs run.
-7. Implement L2 Embedding pipeline (batching, persistence).
-8. Add Web Search tool to L3 for CRAG "incorrect" fallback.
-9. Implement multi-modal L1 adapters (Vision).
+1. Implement L4 Skill Layer (SKILL.md loader).
+2. Mature L5 Reasoning (ToT, RAT).
+3. Implement L7 Hybrid Routing Policy.
+4. Implement Observability/Telemetry (L8).
+5. Build CLI for itfs run.
+6. Implement L2 Embedding pipeline (batching, persistence).
+7. Add Web Search tool to L3 for CRAG "incorrect" fallback.
+8. Implement multi-modal L1 adapters (Vision).
 
 # System Bottlenecks
 - L1 AnthropicAdapter lacks native embedding support.
@@ -42,6 +42,8 @@ Enhance L3 Tooling (File system, Web access).
 # Technical Debt
 - `LocalCodeExecutionTool` uses `node:vm` (unsecured).
 - Task synthesis in `TaskExecutor` is naive.
+- `DiffFileTool` uses a naive line-by-line comparison (fragile to insertions).
+- `WebFetchTool` lacks SSRF protections (domain whitelisting/internal IP blocking).
 
 # AI/Research Integrations
 - Grounded in 'Parallelized Planning-Acting' (ArXiv:2503.03505v2).
@@ -49,8 +51,10 @@ Enhance L3 Tooling (File system, Web access).
 - Corrective RAG (CRAG) for robust knowledge retrieval (ArXiv:2401.15884).
 
 # Security State
-- Preliminary security audit needed.
+- Preliminary security audit completed.
 - `node:vm` usage flagged as a risk for untrusted code.
+- Filesystem tools hardened with path traversal protection (using `path.relative`).
+- SSRF risk in `WebFetchTool` identified.
 
 # Performance State
 - Baseline performance metrics not yet established.
@@ -65,7 +69,7 @@ Enhance L3 Tooling (File system, Web access).
 
 # Testing State
 - Vitest configured.
-- Coverage increasing; L2 Knowledge layer has unit tests.
+- Coverage increasing; L2 Knowledge and L3 Tooling layers have unit tests.
 
 # Scalability Risks
 - Orchestration DAG execution overhead for very large graphs.
@@ -82,18 +86,19 @@ Enhance L3 Tooling (File system, Web access).
 - Atlas Prime Intelligence initialization.
 - L1 Model Adapters (Ollama, Anthropic) with Embedding support.
 - L2 Knowledge Layer (LocalVectorStore, CRAG Retriever).
+- Enhanced L3 Tooling (ReadFileTool, WriteFileTool, DiffFileTool, WebFetchTool).
 
 # Next 10 Priorities
-1. L3 File System tools (read, write, diff).
-2. L4 Skill loader and matcher.
-3. L5 Verifier system (execution, syntax).
-4. L6 Parallel branch execution in Orchestrator.
-5. L7 Routing Policy Engine.
-6. itfs run CLI implementation.
-7. L2 Persistence (File-based or SQLite).
-8. L3 Web Search tool.
-9. L5 Metacognitive strategy.
-10. L8 Telemetry (Trace logging).
+1. L4 Skill loader and matcher.
+2. L5 Verifier system (execution, syntax).
+3. L6 Parallel branch execution in Orchestrator.
+4. L7 Routing Policy Engine.
+5. itfs run CLI implementation.
+6. L2 Persistence (File-based or SQLite).
+7. L3 Web Search tool.
+8. L5 Metacognitive strategy.
+9. L8 Telemetry (Trace logging).
+10. Multi-modal L1 adapters.
 
 # Next 100 Improvements
 - [ ] Distributed orchestration.
@@ -105,3 +110,4 @@ Enhance L3 Tooling (File system, Web access).
 - 2025-05-24: Started initialization of Atlas Prime system intelligence files.
 - 2025-05-24: Initialized Atlas Prime Intelligence and implemented L1 Model Adapters (Ollama, Anthropic).
 - 2025-05-24: Implemented L2 Knowledge Layer with LocalVectorStore and Corrective RAG (CRAG) primitive. Added embedding support to L1 adapters.
+- 2025-05-24: Enhanced L3 Tooling with ReadFileTool, WriteFileTool, DiffFileTool, and WebFetchTool. Added path traversal protections and documented technical debt.
