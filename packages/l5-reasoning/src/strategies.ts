@@ -6,8 +6,11 @@ import {
   ReasoningTrace,
   ReasoningStep,
   VerifierResult,
+  ControllerState,
+  ControllerAction,
 } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
+import { AutoTTSController } from "./autotts.js";
 
 export interface StrategyExecutor {
   execute(
@@ -222,6 +225,110 @@ export class SStarStrategy implements StrategyExecutor {
       score: result.success ? 1 : 0,
       feedback: result.success ? undefined : `Runtime error: ${result.error}`,
       metadata: { execution: result },
+    };
+  }
+}
+
+export class AutoTTSStrategy implements StrategyExecutor {
+  constructor(private controller?: AutoTTSController) {}
+
+  async execute(
+    model: ModelAdapter,
+    messages: Message[],
+    budget: ReasoningBudget,
+    _registry?: ToolRegistry,
+  ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
+    if (!this.controller) {
+      throw new Error("AutoTTSStrategy requires a controller.");
+    }
+
+    const startTime = Date.now();
+    const beta = 0.5; // Default beta if not provided in budget/metadata
+    const maxBudget = budget.max_tokens;
+
+    const state: ControllerState = {
+      question: messages[messages.length - 1].content,
+      maxBranches: budget.max_branches,
+      activeBranches: [],
+      depths: {},
+      revealedProbes: [],
+      remainingBudget: maxBudget,
+      totalCost: 0,
+    };
+
+    const steps: ReasoningStep[] = [];
+    const branchMessages: Record<number, Message[]> = {};
+    let totalTokens = 0;
+    let finalAnswer = "";
+
+    while (state.totalCost < maxBudget) {
+      const action = this.controller.selectAction(state, beta);
+      const stepStartTime = Date.now();
+
+      if (action.type === "ANSWER") {
+        finalAnswer = this.controller.aggregate(state, beta);
+        break;
+      }
+
+      if (action.type === "BRANCH") {
+        const nextIdx = Object.keys(state.depths).length;
+        if (nextIdx < state.maxBranches) {
+          const resp = await model.complete(messages, [], budget);
+          totalTokens += resp.usage.total_tokens;
+          branchMessages[nextIdx] = [...messages, resp.message];
+          state.activeBranches.push(nextIdx);
+          state.depths[nextIdx] = 1;
+          state.totalCost += 1;
+
+          steps.push({
+            step_id: `branch-${nextIdx}`,
+            thought: resp.message.content,
+            duration_ms: Date.now() - stepStartTime,
+          });
+        }
+      } else if (action.type === "CONTINUE") {
+        const idx = action.branchIndex!;
+        const resp = await model.complete(branchMessages[idx], [], budget);
+        totalTokens += resp.usage.total_tokens;
+        branchMessages[idx].push(resp.message);
+        state.depths[idx]++;
+        state.totalCost += 1;
+
+        steps.push({
+          step_id: `continue-branch-${idx}-depth-${state.depths[idx]}`,
+          thought: resp.message.content,
+          duration_ms: Date.now() - stepStartTime,
+        });
+      } else if (action.type === "PROBE") {
+        const idx = action.branchIndex!;
+        const lastMsg = branchMessages[idx][branchMessages[idx].length - 1];
+        state.revealedProbes.push({
+          branchIndex: idx,
+          depth: state.depths[idx],
+          answer: lastMsg.content, // Simplified probing
+        });
+      } else if (action.type === "PRUNE") {
+        const idx = action.branchIndex!;
+        state.activeBranches = state.activeBranches.filter(i => i !== idx);
+      }
+    }
+
+    const trace: ReasoningTrace = {
+      task_id: `autotts-${Math.random().toString(36).substring(7)}`,
+      steps,
+      strategy: "autotts",
+      total_duration_ms: Date.now() - startTime,
+      tokens_used: totalTokens,
+      success: true,
+      final_output: finalAnswer,
+    };
+
+    return {
+      response: {
+        message: { role: "assistant", content: finalAnswer },
+        usage: { prompt_tokens: 0, completion_tokens: totalTokens, total_tokens: totalTokens }
+      },
+      trace
     };
   }
 }
