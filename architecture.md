@@ -8,6 +8,7 @@ ITFS is a 7-layer stack designed for Inference-Time Scaling.
 - `packages/l1-model`: The "I/O". Stateless model communication (Chat, Stream, Embed).
 - `packages/l2-knowledge`: The "Memory". Local vector storage and CRAG-based retrieval.
 - `packages/l3-tooling`: The "Hands". Deterministic actions.
+- `packages/l4-skill`: The "Workflows". Procedural knowledge loading and management.
 - `packages/l5-reasoning`: The "Brain". Controls test-time compute.
 - `packages/l6-orchestration`: The "Manager". Plans and executes DAGs.
 

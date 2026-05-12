@@ -227,4 +227,18 @@ export interface Retriever {
   retrieve(query: string, limit?: number): Promise<RetrievalResult>;
 }
 
+export interface SkillMetadata {
+  id: SkillId;
+  name: string;
+  version: SemVer;
+  description: string;
+  domain: DomainTag;
+  tools: ToolId[];
+}
+
+export interface Skill {
+  metadata: SkillMetadata;
+  procedures: string;
+}
+
 export const name = "types";
