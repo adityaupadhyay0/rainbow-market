@@ -4,11 +4,13 @@ import {
   Message,
   ModelResponse,
   ReasoningTrace,
+  Retriever,
 } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
 import {
   AutoTTSStrategy,
   BestOfNStrategy,
+  RATStrategy,
   ReflexionStrategy,
   SStarStrategy,
   StrategyExecutor,
@@ -18,9 +20,14 @@ import { AutoTTSController } from "./autotts.js";
 export class ReasoningEngine {
   private strategies: Map<string, StrategyExecutor>;
 
-  constructor(private registry?: ToolRegistry, controller?: AutoTTSController) {
+  constructor(
+    private registry?: ToolRegistry,
+    controller?: AutoTTSController,
+    private retriever?: Retriever,
+  ) {
     this.strategies = new Map();
     this.strategies.set("tot", new BestOfNStrategy());
+    this.strategies.set("rat", new RATStrategy());
     this.strategies.set("reflexion", new ReflexionStrategy());
     // Default to sequential CoT via Reflexion with 1 retry if not specified
     this.strategies.set("cot", new ReflexionStrategy());
@@ -43,7 +50,13 @@ export class ReasoningEngine {
       throw new Error(`Unsupported reasoning strategy: ${budget.strategy}`);
     }
 
-    return strategy.execute(model, messages, budget, this.registry);
+    return strategy.execute(
+      model,
+      messages,
+      budget,
+      this.registry,
+      this.retriever,
+    );
   }
 }
 

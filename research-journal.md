@@ -55,3 +55,34 @@ Reduced the skill primitive to two core files per skill directory, avoiding comp
 
 ### Limitations
 Current loader is filesystem-based; may need a virtual filesystem or cloud storage adapter for distributed environments.
+
+## 2026-05-24 — Retrieval-Augmented Thought (RAT)
+
+### Source
+ArXiv:2403.05313 (RAT: Retrieval-Augmented Thought)
+
+### Insight
+Reasoning models (like those using CoT) often suffer from hallucinations in long-form reasoning. RAT integrates retrieval into the reasoning chain iteratively. Instead of RAG (retrieve then reason), RAT does reason-then-retrieve-then-refine.
+
+### Core Mechanism
+- **Step-wise Retrieval**: For each step in the reasoning chain, the model identifies if it needs external knowledge.
+- **Context Injection**: Retrieved knowledge is used to verify and refine the current thought step before proceeding to the next.
+- **Zero-shot CoT baseline**: RAT uses the initial CoT as a query generator.
+
+### Adaptation
+In ITFS L5, `RATStrategy` will:
+1. Generate an initial thought step.
+2. Determine a search query if needed.
+3. Call L2 Retriever.
+4. Refine the thought step with retrieved context.
+5. Repeat for subsequent steps.
+
+### Simplification
+We will implement a simplified loop: `generate_step` -> `detect_query` -> `retrieve` -> `refine_step`. Initial query detection can be based on model-generated tags or uncertainty.
+
+### Reusable Pattern
+`IterativeRefinementLoop`: A pattern where an intermediate output is checked against an external source (Knowledge or Execution) and updated.
+
+### Limitations
+- Latency increases with the number of retrieval steps.
+- Retrieval quality dependency (solved by CRAG in L2).

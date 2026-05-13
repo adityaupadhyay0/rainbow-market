@@ -22,11 +22,12 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Mature L5 Reasoning (ToT, RAT).
+Implement L5 RAT Strategy.
 
 # Queued Tasks
-1. Mature L5 Reasoning (ToT, RAT).
+1. Mature L5 Reasoning (ToT).
 2. Implement L7 Hybrid Routing Policy.
+3. Implement L5 Verifier system (execution, syntax).
 4. Implement Observability/Telemetry (L8).
 5. Build CLI for itfs run.
 6. Implement L2 Embedding pipeline (batching, persistence).
@@ -78,6 +79,7 @@ Mature L5 Reasoning (ToT, RAT).
 - None.
 
 # Recently Completed Tasks
+- Deep Project Understanding and Analysis.
 - Monorepo scaffolding.
 - Shared types definition.
 - Initial Reasoning, Tooling, and Orchestration logic.
@@ -88,7 +90,8 @@ Mature L5 Reasoning (ToT, RAT).
 - L4 Skill Layer (SkillLoader implementation).
 
 # Next 10 Priorities
-1. L5 Verifier system (execution, syntax).
+1. Mature L5 Reasoning (ToT).
+2. L5 Verifier system (execution, syntax).
 3. L6 Parallel branch execution in Orchestrator.
 4. L7 Routing Policy Engine.
 5. itfs run CLI implementation.
@@ -110,3 +113,4 @@ Mature L5 Reasoning (ToT, RAT).
 - 2025-05-24: Implemented L2 Knowledge Layer with LocalVectorStore and Corrective RAG (CRAG) primitive. Added embedding support to L1 adapters.
 - 2025-05-24: Enhanced L3 Tooling with ReadFileTool, WriteFileTool, DiffFileTool, and WebFetchTool. Added path traversal protections and documented technical debt.
 - 2025-05-24: Implemented L4 Skill Layer with `SkillLoader`. Defined `Skill` and `SkillMetadata` types. Added unit tests for skill loading.
+- 2026-05-24: Completed deep repository analysis and initialized task sequence for L5 Reasoning maturity.
