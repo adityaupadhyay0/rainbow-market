@@ -22,12 +22,11 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Implement L4 Skill Layer (SKILL.md loader).
+Mature L5 Reasoning (ToT, RAT).
 
 # Queued Tasks
-1. Implement L4 Skill Layer (SKILL.md loader).
-2. Mature L5 Reasoning (ToT, RAT).
-3. Implement L7 Hybrid Routing Policy.
+1. Mature L5 Reasoning (ToT, RAT).
+2. Implement L7 Hybrid Routing Policy.
 4. Implement Observability/Telemetry (L8).
 5. Build CLI for itfs run.
 6. Implement L2 Embedding pipeline (batching, persistence).
@@ -37,7 +36,6 @@ Implement L4 Skill Layer (SKILL.md loader).
 # System Bottlenecks
 - L1 AnthropicAdapter lacks native embedding support.
 - L2 VectorStore is in-memory only (needs persistence).
-- Lack of real-world skills in /skills.
 
 # Technical Debt
 - `LocalCodeExecutionTool` uses `node:vm` (unsecured).
@@ -87,10 +85,10 @@ Implement L4 Skill Layer (SKILL.md loader).
 - L1 Model Adapters (Ollama, Anthropic) with Embedding support.
 - L2 Knowledge Layer (LocalVectorStore, CRAG Retriever).
 - Enhanced L3 Tooling (ReadFileTool, WriteFileTool, DiffFileTool, WebFetchTool).
+- L4 Skill Layer (SkillLoader implementation).
 
 # Next 10 Priorities
-1. L4 Skill loader and matcher.
-2. L5 Verifier system (execution, syntax).
+1. L5 Verifier system (execution, syntax).
 3. L6 Parallel branch execution in Orchestrator.
 4. L7 Routing Policy Engine.
 5. itfs run CLI implementation.
@@ -111,3 +109,4 @@ Implement L4 Skill Layer (SKILL.md loader).
 - 2025-05-24: Initialized Atlas Prime Intelligence and implemented L1 Model Adapters (Ollama, Anthropic).
 - 2025-05-24: Implemented L2 Knowledge Layer with LocalVectorStore and Corrective RAG (CRAG) primitive. Added embedding support to L1 adapters.
 - 2025-05-24: Enhanced L3 Tooling with ReadFileTool, WriteFileTool, DiffFileTool, and WebFetchTool. Added path traversal protections and documented technical debt.
+- 2025-05-24: Implemented L4 Skill Layer with `SkillLoader`. Defined `Skill` and `SkillMetadata` types. Added unit tests for skill loading.

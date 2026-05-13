@@ -32,3 +32,26 @@ We will simplify CRAG into a "Threshold-based Retrieval Filter" and a "Knowledge
 - Evaluator overhead (latency).
 - Dependency on external search for "Incorrect" cases.
 - Complexity in "recomposing" knowledge strips without losing context.
+
+## 2026-05-24 — L4 Skill Layer: Procedural Knowledge Separation
+
+### Source
+Internal Architecture Design
+
+### Insight
+Decoupling metadata from procedures in skills allows for efficient discovery (via metadata) while maintaining rich, human-readable instructions for reasoning models (via SKILL.md).
+
+### Conflict
+Initially considered storing procedures in JSON, but SKILL.md provides better DX and allows models to parse natural language procedures more effectively.
+
+### Adaptation
+Implemented `SkillLoader` to handle dual-file loading (METADATA.json + SKILL.md).
+
+### Simplification
+Reduced the skill primitive to two core files per skill directory, avoiding complex database schemas for procedural knowledge.
+
+### Reusable Pattern
+`SkillLoader` pattern for directory-based asset management with metadata-procedure separation.
+
+### Limitations
+Current loader is filesystem-based; may need a virtual filesystem or cloud storage adapter for distributed environments.
