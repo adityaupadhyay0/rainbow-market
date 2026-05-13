@@ -55,3 +55,29 @@ Reduced the skill primitive to two core files per skill directory, avoiding comp
 
 ### Limitations
 Current loader is filesystem-based; may need a virtual filesystem or cloud storage adapter for distributed environments.
+
+## 2026-05-24 — TMAS: Hierarchical Memory for Test-Time Compute
+
+### Source
+ArXiv:2605.10344 (TMAS: Scaling Test-Time Compute via Multi-Agent Synergy)
+
+### Insight
+Scaling test-time compute effectively requires balancing exploration (trying new reasoning paths) and exploitation (using what works). Coordination across parallel trajectories is best achieved through hierarchical memories rather than just raw context or independent branches.
+
+### Core Mechanism
+- **Experience Bank (Low-level)**: Stores and reuses reliable intermediate conclusions and local feedback. It prevents re-solving sub-problems.
+- **Guideline Bank (High-level)**: Records strategies explored so far to steering agents away from redundant or failing patterns.
+- **Multi-Agent Synergy**: Reasoning is collaborative, with structured information flow (Experience/Guidelines) between agents.
+
+### Adaptation
+In ITFS, L4 Skills serve as the "Experience Bank" (verified procedures). We will evolve L5/L6 to include a "Guideline Bank" primitive that tracks reasoning strategy outcomes within a TaskGraph to avoid redundant sub-graphs.
+
+### Simplification
+Instead of a full multi-agent reinforcement learning scheme, we can use a "Shared Memory" object in the Orchestrator (L6) that collects "guidelines" (what failed/what worked) from completed SubTasks to prune or steer pending SubTasks.
+
+### Reusable Pattern
+`HierarchicalReasoningMemory`: A structure containing both `AtomicExperiences` (reusable results) and `ReasoningGuidelines` (steering logic).
+
+### Limitations
+- Memory management overhead in large TaskGraphs.
+- Risk of "Guideline Poisoning" if a local failure is over-generalized to the whole task.

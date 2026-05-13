@@ -47,6 +47,7 @@ Mature L5 Reasoning (ToT, RAT).
 - Grounded in 'Parallelized Planning-Acting' (ArXiv:2503.03505v2).
 - S* Strategy for execution-grounded reasoning.
 - Corrective RAG (CRAG) for robust knowledge retrieval (ArXiv:2401.15884).
+- TMAS: Hierarchical Memory (Experience/Guideline Banks) for test-time scaling (ArXiv:2605.10344).
 
 # Security State
 - Preliminary security audit completed.
