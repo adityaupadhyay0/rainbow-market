@@ -133,6 +133,13 @@ export interface ToolResult {
   duration_ms: number;
 }
 
+export type ToTValue = "sure" | "likely" | "impossible";
+
+export interface ToTEvaluation {
+  value: ToTValue;
+  explanation?: string;
+}
+
 export interface VerifierResult {
   valid: boolean;
   score: number;

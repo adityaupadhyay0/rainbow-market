@@ -22,11 +22,10 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Implement L5 RAT Strategy.
+Implement L5 Reasoning Maturity (ToT).
 
 # Queued Tasks
-1. Mature L5 Reasoning (ToT).
-2. Implement L7 Hybrid Routing Policy.
+1. Implement L7 Hybrid Routing Policy.
 3. Implement L5 Verifier system (execution, syntax).
 4. Implement Observability/Telemetry (L8).
 5. Build CLI for itfs run.
@@ -79,6 +78,9 @@ Implement L5 RAT Strategy.
 - None.
 
 # Recently Completed Tasks
+- Implement L5 RAT (Retrieval-Augmented Thought) Strategy.
+- Implement L5 ToT (Tree of Thoughts) Strategy with BFS search.
+- Define ToT Evaluation primitives in shared types.
 - Deep Project Understanding and Analysis.
 - Monorepo scaffolding.
 - Shared types definition.
