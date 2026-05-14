@@ -8,6 +8,7 @@ import {
   VerifierResult,
   ControllerState,
   ControllerAction,
+  Retriever,
 } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
 import { AutoTTSController } from "./autotts.js";
@@ -18,6 +19,7 @@ export interface StrategyExecutor {
     messages: Message[],
     budget: ReasoningBudget,
     registry?: ToolRegistry,
+    retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }>;
 }
 
@@ -27,6 +29,7 @@ export class BestOfNStrategy implements StrategyExecutor {
     messages: Message[],
     budget: ReasoningBudget,
     _registry?: ToolRegistry,
+    _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const n = budget.max_branches ?? 1;
     const startTime = Date.now();
@@ -65,12 +68,114 @@ export class BestOfNStrategy implements StrategyExecutor {
   }
 }
 
+export class RATStrategy implements StrategyExecutor {
+  async execute(
+    model: ModelAdapter,
+    messages: Message[],
+    budget: ReasoningBudget,
+    _registry?: ToolRegistry,
+    retriever?: Retriever,
+  ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
+    const startTime = Date.now();
+    const steps: ReasoningStep[] = [];
+    const maxDepth = budget.max_depth ?? 3;
+    let promptTokens = 0;
+    let completionTokens = 0;
+    const currentMessages = [...messages];
+    let finalOutput = "";
+
+    for (let d = 0; d < maxDepth; d++) {
+      const stepStart = Date.now();
+
+      // 1. Generate Draft Thought
+      const draftResp = await model.complete(currentMessages, [], budget);
+      promptTokens += draftResp.usage.prompt_tokens;
+      completionTokens += draftResp.usage.completion_tokens;
+      const draftThought = draftResp.message.content;
+
+      // 2. Identify Query (Simplified: use the thought itself)
+      const query = draftThought;
+
+      // 3. Retrieve
+      let context = "";
+      if (retriever) {
+        const retrievalResult = await retriever.retrieve(query);
+        context = retrievalResult.documents
+          .map((doc) => doc.content)
+          .join("\n\n");
+      }
+
+      // 4. Refine Thought
+      const refinementPrompt: Message = {
+        role: "user",
+        content: `Based on the following retrieved context, please refine and verify your previous thought. If the context contradicts your thought, correct it. If the context is irrelevant, ignore it.
+
+Context:
+${context || "No relevant context found."}
+
+Previous Thought:
+${draftThought}
+
+Refined Thought:`,
+      };
+
+      const refinedResp = await model.complete(
+        [...currentMessages, draftResp.message, refinementPrompt],
+        [],
+        budget,
+      );
+      promptTokens += refinedResp.usage.prompt_tokens;
+      completionTokens += refinedResp.usage.completion_tokens;
+      const refinedThought = refinedResp.message.content;
+
+      steps.push({
+        step_id: `rat-step-${d}`,
+        thought: refinedThought,
+        duration_ms: Date.now() - stepStart,
+      });
+
+      currentMessages.push({ role: "assistant", content: refinedThought });
+      finalOutput = refinedThought;
+
+      if (
+        refinedThought.toLowerCase().includes("final answer:") ||
+        refinedThought.toLowerCase().includes("conclusion:")
+      ) {
+        break;
+      }
+    }
+
+    const trace: ReasoningTrace = {
+      task_id: `rat-${Math.random().toString(36).substring(7)}`,
+      steps,
+      strategy: "rat",
+      total_duration_ms: Date.now() - startTime,
+      tokens_used: promptTokens + completionTokens,
+      success: true,
+      final_output: finalOutput,
+    };
+
+    return {
+      response: {
+        message: { role: "assistant", content: finalOutput },
+        usage: {
+          prompt_tokens: promptTokens,
+          completion_tokens: completionTokens,
+          total_tokens: promptTokens + completionTokens,
+        },
+      },
+      trace,
+    };
+  }
+}
+
 export class SStarStrategy implements StrategyExecutor {
   async execute(
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
     registry?: ToolRegistry,
+    _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const n = budget.max_branches ?? 1;
@@ -237,6 +342,7 @@ export class AutoTTSStrategy implements StrategyExecutor {
     messages: Message[],
     budget: ReasoningBudget,
     _registry?: ToolRegistry,
+    _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     if (!this.controller) {
       throw new Error("AutoTTSStrategy requires a controller.");
@@ -339,6 +445,7 @@ export class ReflexionStrategy implements StrategyExecutor {
     messages: Message[],
     budget: ReasoningBudget,
     _registry?: ToolRegistry,
+    _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const steps: ReasoningStep[] = [];

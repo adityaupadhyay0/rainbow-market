@@ -6,6 +6,8 @@ Last Updated: 2026-05-24
 ## Bottlenecks
 - **Ollama API Latency**: Sequential embedding generation for large batches was identified.
     - *Improvement*: Parallelized embedding requests in `OllamaAdapter` using `Promise.all`.
+- **Reasoning Latency (RAT)**: Iterative retrieval in the reasoning loop adds overhead per step.
+    - *Improvement*: Planned use of small models for query generation and retrieval confidence scoring.
 
 ## Metrics
 - **Orchestration Overhead**: TBD.
