@@ -15,6 +15,7 @@ import {
   SStarStrategy,
   StrategyExecutor,
 } from "./strategies.js";
+import { ToTStrategy } from "./tot.js";
 import { AutoTTSController } from "./autotts.js";
 
 export class ReasoningEngine {
@@ -26,7 +27,7 @@ export class ReasoningEngine {
     private retriever?: Retriever,
   ) {
     this.strategies = new Map();
-    this.strategies.set("tot", new BestOfNStrategy());
+    this.strategies.set("tot", new ToTStrategy());
     this.strategies.set("rat", new RATStrategy());
     this.strategies.set("reflexion", new ReflexionStrategy());
     // Default to sequential CoT via Reflexion with 1 retry if not specified

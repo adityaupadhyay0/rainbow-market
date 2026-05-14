@@ -86,3 +86,30 @@ We will implement a simplified loop: `generate_step` -> `detect_query` -> `retri
 ### Limitations
 - Latency increases with the number of retrieval steps.
 - Retrieval quality dependency (solved by CRAG in L2).
+
+## 2026-05-24 — Tree of Thoughts (ToT)
+
+### Source
+ArXiv:2305.10601 (Tree of Thoughts: Deliberate Problem Solving with Large Language Models)
+
+### Insight
+LM reasoning can be improved by exploring a tree of thoughts rather than a single chain. This allows for look-ahead, backtracking, and global evaluation of reasoning paths.
+
+### Core Mechanism
+- **Thought Decomposition**: Breaking the problem into intermediate steps.
+- **Thought Generator**: Generating multiple candidates for each step.
+- **State Evaluator**: Heuristic evaluation of thought nodes (SURE, LIKELY, IMPOSSIBLE).
+- **Search Algorithm**: BFS or DFS to navigate the tree.
+
+### Adaptation
+In ITFS L5, `ToTStrategy` implements a BFS traversal. For each depth level, it generates `k` candidates per parent node, evaluates them, and prunes nodes marked as `IMPOSSIBLE`. It maintains the best `k` nodes at each level.
+
+### Simplification
+The initial implementation uses a simple BFS with a fixed branching factor. Evaluator is a prompt-based heuristic returning discrete labels.
+
+### Reusable Pattern
+`TreeSearchExecutor`: A generic pattern for state-space search where states are reasoning steps and transitions are model completions.
+
+### Limitations
+- Exponential complexity if branching factor and depth are high.
+- Heuristic evaluator quality is critical for pruning.
