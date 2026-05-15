@@ -68,6 +68,17 @@ export interface OfflineReplayData {
   trajectories: ReasoningTrajectory[];
 }
 
+export enum ToTValue {
+  SURE = "SURE",
+  LIKELY = "LIKELY",
+  IMPOSSIBLE = "IMPOSSIBLE",
+}
+
+export interface ToTEvaluation {
+  value: ToTValue;
+  explanation: string;
+}
+
 export type BudgetExceededPolicy = "escalate" | "return_best" | "fail";
 export type VerifierType =
   | "execution"

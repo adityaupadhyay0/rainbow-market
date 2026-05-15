@@ -88,10 +88,10 @@ Implement L5 RAT Strategy.
 - L2 Knowledge Layer (LocalVectorStore, CRAG Retriever).
 - Enhanced L3 Tooling (ReadFileTool, WriteFileTool, DiffFileTool, WebFetchTool).
 - L4 Skill Layer (SkillLoader implementation).
+- L5 Reasoning Maturity (Tree of Thoughts - ToT).
 
 # Next 10 Priorities
-1. Mature L5 Reasoning (ToT).
-2. L5 Verifier system (execution, syntax).
+1. L5 Verifier system (execution, syntax).
 3. L6 Parallel branch execution in Orchestrator.
 4. L7 Routing Policy Engine.
 5. itfs run CLI implementation.
@@ -114,3 +114,4 @@ Implement L5 RAT Strategy.
 - 2025-05-24: Enhanced L3 Tooling with ReadFileTool, WriteFileTool, DiffFileTool, and WebFetchTool. Added path traversal protections and documented technical debt.
 - 2025-05-24: Implemented L4 Skill Layer with `SkillLoader`. Defined `Skill` and `SkillMetadata` types. Added unit tests for skill loading.
 - 2026-05-24: Completed deep repository analysis and initialized task sequence for L5 Reasoning maturity.
+- 2026-05-24: Implemented BFS-based Tree of Thoughts (ToT) strategy in L5 Reasoning layer. Added `ToTValue` and `ToTEvaluation` types.
