@@ -9,6 +9,7 @@ import {
 import { ToolRegistry } from "@itfs/l3-tooling";
 import {
   AutoTTSStrategy,
+  ToTStrategy,
   BestOfNStrategy,
   RATStrategy,
   ReflexionStrategy,
@@ -26,7 +27,8 @@ export class ReasoningEngine {
     private retriever?: Retriever,
   ) {
     this.strategies = new Map();
-    this.strategies.set("tot", new BestOfNStrategy());
+    this.strategies.set("tot", new ToTStrategy());
+    this.strategies.set("best_of_n", new BestOfNStrategy());
     this.strategies.set("rat", new RATStrategy());
     this.strategies.set("reflexion", new ReflexionStrategy());
     // Default to sequential CoT via Reflexion with 1 retry if not specified

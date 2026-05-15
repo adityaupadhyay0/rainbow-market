@@ -86,3 +86,36 @@ We will implement a simplified loop: `generate_step` -> `detect_query` -> `retri
 ### Limitations
 - Latency increases with the number of retrieval steps.
 - Retrieval quality dependency (solved by CRAG in L2).
+
+## 2026-05-24 — Tree of Thoughts (ToT) BFS Strategy
+
+### Source
+ArXiv:2305.10601 (Tree of Thoughts: Deliberate Problem Solving with Large Language Models)
+
+### Insight
+CoT is linear and cannot "look ahead" or "backtrack." ToT structures reasoning as a search over a tree, where each node is a "thought" (intermediate solution step).
+
+### Core Mechanism
+- **Expansion**: Generating $k$ candidate next thoughts for a given node.
+- **Evaluation**: Using the model to score each candidate (e.g., SURE, LIKELY, IMPOSSIBLE).
+- **Search Strategy**: BFS or DFS over the thought tree.
+
+### Adaptation
+In ITFS L5, `ToTStrategy` implements a BFS search:
+1. Initialize queue with the input message.
+2. For each depth (up to `max_depth`):
+   a. Expand current frontier into $k$ candidates per node.
+   b. Evaluate all candidates.
+   c. Prune "IMPOSSIBLE" paths.
+   d. If "SURE" is found, terminate and return.
+   e. Enqueue "LIKELY" paths for the next level, limited by `max_branches` (beam search).
+
+### Simplification
+We use a discrete value-based evaluation (SURE/LIKELY/IMPOSSIBLE) instead of continuous scoring to simplify parsing and logic. Early termination on "SURE" significantly reduces redundant compute.
+
+### Reusable Pattern
+`ValueBasedTreeSearch`: A pattern where a search tree is explored and pruned based on discrete model evaluations.
+
+### Limitations
+- Compute cost scales with $k^d$ (partially mitigated by beam search and early termination).
+- Evaluation quality depends on the model's self-assessment accuracy.

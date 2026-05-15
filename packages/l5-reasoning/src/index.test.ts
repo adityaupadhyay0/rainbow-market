@@ -35,11 +35,20 @@ describe("ReasoningEngine", () => {
   const mockModel = new MockModelAdapter();
   const messages: Message[] = [{ role: "user", content: "Solve 2+2" }];
 
-  it("should execute Best-of-N (tot) strategy", async () => {
+  it("should execute Tree-of-Thought (tot) strategy", async () => {
+    mockModel.complete.mockClear();
+    // For max_branches: 2, max_depth: 1
+    // 1st Expand: 2 calls
+    // 2nd Evaluate: 2 calls
+    mockModel.complete.mockResolvedValue({
+      message: { role: "assistant", content: "VALUE: LIKELY\nThought" },
+      usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+    });
+
     const budget: ReasoningBudget = {
       strategy: "tot",
-      max_tokens: 100,
-      max_branches: 3,
+      max_tokens: 200,
+      max_branches: 2,
       max_depth: 1,
       max_retries: 0,
       verifier: "null",
@@ -50,8 +59,8 @@ describe("ReasoningEngine", () => {
 
     expect(response.message.content).toBeDefined();
     expect(trace.strategy).toBe("tot");
-    expect(trace.steps.length).toBe(3);
-    expect(mockModel.complete).toHaveBeenCalledTimes(3);
+    // Expand (2) + Evaluate (2) = 4 calls
+    expect(mockModel.complete).toHaveBeenCalledTimes(4);
   });
 
   it("should execute Reflexion strategy and retry on failure", async () => {

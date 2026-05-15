@@ -9,6 +9,8 @@ import {
   ControllerState,
   ControllerAction,
   Retriever,
+  ToTValue,
+  ToTEvaluation,
 } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
 import { AutoTTSController } from "./autotts.js";
@@ -21,6 +23,154 @@ export interface StrategyExecutor {
     registry?: ToolRegistry,
     retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }>;
+}
+
+export class ToTStrategy implements StrategyExecutor {
+  async execute(
+    model: ModelAdapter,
+    messages: Message[],
+    budget: ReasoningBudget,
+    _registry?: ToolRegistry,
+    _retriever?: Retriever,
+  ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
+    const startTime = Date.now();
+    const maxBranches = budget.max_branches ?? 3;
+    const maxDepth = budget.max_depth ?? 3;
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+
+    // BFS Queue: each item is a path of messages
+    let queue: Message[][] = [[...messages]];
+    let finalTraceSteps: ReasoningStep[] = [];
+    let bestFinalPath: Message[] | null = null;
+
+    for (let depth = 0; depth < maxDepth; depth++) {
+      const nextQueue: Message[][] = [];
+
+      for (const path of queue) {
+        const stepStartTime = Date.now();
+        // 1. Expand: Generate candidates
+        const expansionPromises = Array.from({ length: maxBranches }).map(() =>
+          model.complete(path, [], budget),
+        );
+        const candidates = await Promise.all(expansionPromises);
+        for (const c of candidates) {
+          totalPromptTokens += c.usage.prompt_tokens;
+          totalCompletionTokens += c.usage.completion_tokens;
+        }
+
+        // 2. Evaluate: Score each candidate
+        const evaluations = await Promise.all(
+          candidates.map((c) => this.evaluate(model, path, c.message, budget)),
+        );
+        for (const e of evaluations) {
+          totalPromptTokens += e.usage.prompt_tokens;
+          totalCompletionTokens += e.usage.completion_tokens;
+        }
+
+        const durationPerStep = Math.floor(
+          (Date.now() - stepStartTime) / (candidates.length || 1),
+        );
+
+        // 3. Prune & Enqueue
+        for (let i = 0; i < candidates.length; i++) {
+          const evalResult = this.parseEvaluation(
+            evaluations[i].message.content,
+          );
+          const candidateMessage = candidates[i].message;
+
+          finalTraceSteps.push({
+            step_id: `tot-d${depth}-b${i}-${Math.random().toString(36).substring(7)}`,
+            thought: candidateMessage.content,
+            verification: {
+              valid: evalResult.value !== ToTValue.IMPOSSIBLE,
+              score:
+                evalResult.value === ToTValue.SURE
+                  ? 1
+                  : evalResult.value === ToTValue.LIKELY
+                    ? 0.5
+                    : 0,
+              feedback: evalResult.explanation,
+            },
+            duration_ms: durationPerStep,
+          });
+
+          if (evalResult.value === ToTValue.SURE && !bestFinalPath) {
+            // Early termination if we find a SURE answer
+            bestFinalPath = [...path, candidateMessage];
+          }
+
+          if (evalResult.value === ToTValue.LIKELY) {
+            nextQueue.push([...path, candidateMessage]);
+          }
+        }
+
+        if (bestFinalPath) break;
+      }
+
+      if (bestFinalPath || nextQueue.length === 0) break;
+      queue = nextQueue.slice(0, maxBranches); // Keep top branches for next depth
+    }
+
+    const finalPath = bestFinalPath || queue[0] || messages;
+    const lastMessage = finalPath[finalPath.length - 1];
+
+    const trace: ReasoningTrace = {
+      task_id: `tot-${Math.random().toString(36).substring(7)}`,
+      steps: finalTraceSteps,
+      strategy: "tot",
+      total_duration_ms: Date.now() - startTime,
+      tokens_used: totalPromptTokens + totalCompletionTokens,
+      success: !!bestFinalPath,
+      final_output: lastMessage.content,
+    };
+
+    return {
+      response: {
+        message: { role: "assistant", content: lastMessage.content },
+        usage: {
+          prompt_tokens: totalPromptTokens,
+          completion_tokens: totalCompletionTokens,
+          total_tokens: totalPromptTokens + totalCompletionTokens,
+        },
+      },
+      trace,
+    };
+  }
+
+  private async evaluate(
+    model: ModelAdapter,
+    path: Message[],
+    candidate: Message,
+    budget: ReasoningBudget,
+  ): Promise<ModelResponse> {
+    const evaluationPrompt: Message = {
+      role: "user",
+      content: `Evaluate the following thought as a step toward solving the problem.
+Answer with:
+VALUE: [SURE | LIKELY | IMPOSSIBLE]
+EXPLANATION: [Brief explanation]
+
+Thought:
+${candidate.content}`,
+    };
+
+    return model.complete([...path, evaluationPrompt], [], budget);
+  }
+
+  private parseEvaluation(content: string): ToTEvaluation {
+    const valueMatch = content.match(/VALUE:\s*(SURE|LIKELY|IMPOSSIBLE)/i);
+    const explanationMatch = content.match(/EXPLANATION:\s*(.*)/i);
+
+    const valueStr = valueMatch?.[1].toUpperCase() || "IMPOSSIBLE";
+    const value =
+      ToTValue[valueStr as keyof typeof ToTValue] || ToTValue.IMPOSSIBLE;
+
+    return {
+      value,
+      explanation: explanationMatch?.[1] || "No explanation provided.",
+    };
+  }
 }
 
 export class BestOfNStrategy implements StrategyExecutor {
