@@ -238,27 +238,46 @@ export class RATStrategy implements StrategyExecutor {
       const stepStart = Date.now();
 
       // 1. Generate Draft Thought
-      const draftResp = await model.complete(currentMessages, [], budget);
+      const draftInstruction: Message = {
+        role: "user",
+        content: `Continue your reasoning. If you need more information, provide a search query in the format [QUERY: your query].`,
+      };
+
+      const draftResp = await model.complete(
+        [...currentMessages, draftInstruction],
+        [],
+        budget,
+      );
       promptTokens += draftResp.usage.prompt_tokens;
       completionTokens += draftResp.usage.completion_tokens;
       const draftThought = draftResp.message.content;
 
-      // 2. Identify Query (Simplified: use the thought itself)
-      const query = draftThought;
+      // 2. Identify Query via Regex
+      const queryMatch = draftThought.match(/\[QUERY:\s*(.*?)\]/i);
+      const query = queryMatch ? queryMatch[1] : draftThought;
 
       // 3. Retrieve
       let context = "";
+      let confidence = "incorrect";
       if (retriever) {
         const retrievalResult = await retriever.retrieve(query);
         context = retrievalResult.documents
           .map((doc) => doc.content)
           .join("\n\n");
+        confidence = retrievalResult.confidence;
       }
 
       // 4. Refine Thought
+      const confidenceGuide =
+        confidence === "correct"
+          ? "The retrieved context is highly relevant and should be trusted."
+          : confidence === "ambiguous"
+            ? "The retrieved context may be relevant; use it with caution."
+            : "The retrieved context was low-confidence or irrelevant.";
+
       const refinementPrompt: Message = {
         role: "user",
-        content: `Based on the following retrieved context, please refine and verify your previous thought. If the context contradicts your thought, correct it. If the context is irrelevant, ignore it.
+        content: `Based on the following retrieved context (Confidence: ${confidence.toUpperCase()}), please refine and verify your previous thought. ${confidenceGuide} If the context contradicts your thought, correct it.
 
 Context:
 ${context || "No relevant context found."}
@@ -287,9 +306,12 @@ Refined Thought:`,
       currentMessages.push({ role: "assistant", content: refinedThought });
       finalOutput = refinedThought;
 
+      // Robust termination check
+      const normalizedThought = refinedThought.toUpperCase();
       if (
-        refinedThought.toLowerCase().includes("final answer:") ||
-        refinedThought.toLowerCase().includes("conclusion:")
+        normalizedThought.includes("FINAL ANSWER:") ||
+        normalizedThought.includes("CONCLUSION:") ||
+        normalizedThought.includes("### FINAL ANSWER")
       ) {
         break;
       }
