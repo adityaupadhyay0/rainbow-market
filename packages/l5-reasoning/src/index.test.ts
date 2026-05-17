@@ -66,18 +66,17 @@ describe("ReasoningEngine", () => {
   it("should execute Reflexion strategy and retry on failure", async () => {
     mockModel.complete.mockClear();
 
-    // First call returns short response (triggering "verification failure")
-    // Second call returns long response
+    // First call returns invalid syntax (triggering "verification failure")
+    // Second call returns valid syntax
     mockModel.complete
       .mockResolvedValueOnce({
-        message: { role: "assistant", content: "Too short" },
+        message: { role: "assistant", content: "```js\nconst x =\n```" },
         usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
       })
       .mockResolvedValueOnce({
         message: {
           role: "assistant",
-          content:
-            "This is a much longer response that should pass the mock verification heuristic.",
+          content: "```js\nconst x = 1;\n```",
         },
         usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
       });
@@ -88,7 +87,7 @@ describe("ReasoningEngine", () => {
       max_branches: 1,
       max_depth: 3,
       max_retries: 3,
-      verifier: "execution",
+      verifier: "syntax",
       on_budget_exceeded: "fail",
     };
 
@@ -98,7 +97,7 @@ describe("ReasoningEngine", () => {
     expect(trace.steps.length).toBe(2);
     expect(trace.success).toBe(true);
     expect(mockModel.complete).toHaveBeenCalledTimes(2);
-    expect(response.message.content).toContain("longer response");
+    expect(response.message.content).toContain("const x = 1;");
   });
 
   it("should throw error for unsupported strategy", async () => {
@@ -151,5 +150,80 @@ describe("ReasoningEngine", () => {
     expect(trace.success).toBe(true);
     expect(response.message.content).toContain("```javascript");
     expect(trace.steps.length).toBe(2); // Initial + 1 retry
+  });
+});
+
+describe("ReflexionStrategy with SyntaxVerifier", () => {
+  const mockModel = new MockModelAdapter();
+  const engine = new ReasoningEngine();
+  const messages: Message[] = [{ role: "user", content: "Write a JS function" }];
+
+  it("should retry on syntax error", async () => {
+    mockModel.complete.mockClear();
+
+    // Round 0: Invalid syntax
+    mockModel.complete.mockResolvedValueOnce({
+      message: { role: "assistant", content: "```js\nconst x =\n```" },
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+    // Round 1: Valid syntax
+    mockModel.complete.mockResolvedValueOnce({
+      message: { role: "assistant", content: "```js\nconst x = 1;\n```" },
+      usage: { prompt_tokens: 30, completion_tokens: 5, total_tokens: 35 },
+    });
+
+    const budget: ReasoningBudget = {
+      strategy: "reflexion",
+      max_tokens: 500,
+      max_branches: 1,
+      max_depth: 2,
+      max_retries: 1,
+      verifier: "syntax",
+      on_budget_exceeded: "fail",
+    };
+
+    const { response, trace } = await engine.solve(mockModel, messages, budget);
+
+    expect(trace.success).toBe(true);
+    expect(trace.steps.length).toBe(2);
+    expect(trace.steps[0].verification?.valid).toBe(false);
+    expect(trace.steps[1].verification?.valid).toBe(true);
+    expect(response.message.content).toContain("const x = 1;");
+  });
+});
+
+describe("BestOfNStrategy with SyntaxVerifier", () => {
+  const mockModel = new MockModelAdapter();
+  const engine = new ReasoningEngine();
+  const messages: Message[] = [{ role: "user", content: "Write code" }];
+
+  it("should select the best candidate based on syntax", async () => {
+    mockModel.complete.mockClear();
+
+    // Candidate 1: Syntax error
+    mockModel.complete.mockResolvedValueOnce({
+      message: { role: "assistant", content: "```js\nconst x =\n```" },
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+    // Candidate 2: Valid syntax
+    mockModel.complete.mockResolvedValueOnce({
+      message: { role: "assistant", content: "```js\nconst x = 1;\n```" },
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+
+    const budget: ReasoningBudget = {
+      strategy: "best_of_n",
+      max_tokens: 500,
+      max_branches: 2,
+      max_depth: 1,
+      max_retries: 0,
+      verifier: "syntax",
+      on_budget_exceeded: "fail",
+    };
+
+    const { response, trace } = await engine.solve(mockModel, messages, budget);
+
+    expect(trace.success).toBe(true);
+    expect(response.message.content).toContain("const x = 1;");
   });
 });
