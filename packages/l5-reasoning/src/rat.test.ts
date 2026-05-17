@@ -69,6 +69,81 @@ describe("RATStrategy", () => {
     expect(response.usage.total_tokens).toBe(40);
   });
 
+  it("should extract query from [QUERY: ...] tag", async () => {
+    mockModel.complete.mockClear();
+    mockRetriever.retrieve.mockClear();
+
+    mockModel.complete
+      .mockResolvedValueOnce({
+        message: { role: "assistant", content: "I need to check [QUERY: capital of Germany]" },
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      })
+      .mockResolvedValueOnce({
+        message: { role: "assistant", content: "FINAL ANSWER: Berlin" },
+        usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+      });
+
+    const budget: ReasoningBudget = {
+      strategy: "rat",
+      max_tokens: 100,
+      max_branches: 1,
+      max_depth: 1,
+      max_retries: 0,
+      verifier: "null",
+      on_budget_exceeded: "fail",
+    };
+
+    await engine.solve(mockModel, messages, budget);
+
+    expect(mockRetriever.retrieve).toHaveBeenCalledWith("capital of Germany");
+  });
+
+  it("should adapt refinement prompt based on retriever confidence", async () => {
+    const confidences: ("correct" | "ambiguous" | "incorrect")[] = ["correct", "ambiguous", "incorrect"];
+
+    for (const confidence of confidences) {
+      mockModel.complete.mockClear();
+      mockRetriever.retrieve.mockClear();
+
+      mockRetriever.retrieve.mockResolvedValueOnce({
+        documents: [{ id: "1", content: "Some info", similarity: 0.9 }],
+        confidence,
+      });
+
+      mockModel.complete
+        .mockResolvedValueOnce({
+          message: { role: "assistant", content: "Draft thought" },
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        })
+        .mockResolvedValueOnce({
+          message: { role: "assistant", content: "FINAL ANSWER" },
+          usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+        });
+
+      const budget: ReasoningBudget = {
+        strategy: "rat",
+        max_tokens: 100,
+        max_branches: 1,
+        max_depth: 1,
+        max_retries: 0,
+        verifier: "null",
+        on_budget_exceeded: "fail",
+      };
+
+      await engine.solve(mockModel, messages, budget);
+
+      const refinementPrompt = mockModel.complete.mock.calls[1][0][2].content;
+      expect(refinementPrompt).toContain(`Confidence: ${confidence.toUpperCase()}`);
+      if (confidence === "correct") {
+        expect(refinementPrompt).toContain("highly relevant and should be trusted");
+      } else if (confidence === "ambiguous") {
+        expect(refinementPrompt).toContain("may be relevant; use it with caution");
+      } else {
+        expect(refinementPrompt).toContain("low-confidence or irrelevant");
+      }
+    }
+  });
+
   it("should iterate multiple times if no final answer is reached", async () => {
     mockModel.complete.mockClear();
     mockRetriever.retrieve.mockClear();

@@ -22,7 +22,7 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Implement L5 RAT Strategy.
+Implement L5 Verifier system (execution, syntax).
 
 # Queued Tasks
 1. Mature L5 Reasoning (ToT).
@@ -89,6 +89,7 @@ Implement L5 RAT Strategy.
 - Enhanced L3 Tooling (ReadFileTool, WriteFileTool, DiffFileTool, WebFetchTool).
 - L4 Skill Layer (SkillLoader implementation).
 - L5 Reasoning Maturity (Tree of Thoughts - ToT).
+- Matured L5 RAT Strategy (Structured Querying, Confidence Integration).
 
 # Next 10 Priorities
 1. L5 Verifier system (execution, syntax).
@@ -115,3 +116,4 @@ Implement L5 RAT Strategy.
 - 2025-05-24: Implemented L4 Skill Layer with `SkillLoader`. Defined `Skill` and `SkillMetadata` types. Added unit tests for skill loading.
 - 2026-05-24: Completed deep repository analysis and initialized task sequence for L5 Reasoning maturity.
 - 2026-05-24: Implemented BFS-based Tree of Thoughts (ToT) strategy in L5 Reasoning layer. Added `ToTValue` and `ToTEvaluation` types.
+- 2026-05-24: Matured RAT Strategy with explicit query extraction, confidence-aware refinement, and robust termination checks.
