@@ -14,6 +14,7 @@ import {
 } from "@itfs/types";
 import { ToolRegistry } from "@itfs/l3-tooling";
 import { AutoTTSController } from "./autotts.js";
+import { VerifierFactory } from "./verifiers.js";
 
 export interface StrategyExecutor {
   execute(
@@ -178,39 +179,48 @@ export class BestOfNStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
-    _registry?: ToolRegistry,
+    registry?: ToolRegistry,
     _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const n = budget.max_branches ?? 1;
     const startTime = Date.now();
+    const verifier = VerifierFactory.create(budget.verifier, registry);
 
     const candidates = await Promise.all(
       Array.from({ length: n }).map(async (_, i) => {
         const branchStart = Date.now();
         const response = await model.complete(messages, [], budget);
-        return { response, duration: Date.now() - branchStart, index: i };
+        const verification = await verifier.verify(response.message.content);
+        return {
+          response,
+          duration: Date.now() - branchStart,
+          index: i,
+          verification,
+        };
       }),
     );
 
-    // In a real system, we'd use a PRM (Process Reward Model) or a Verifier here.
-    // For the initial implementation, we'll pick the one with the highest "internal score"
-    // or simply the first one if all are equal.
-    const bestCandidate = candidates[0];
+    // Sort by score descending
+    const sorted = [...candidates].sort(
+      (a, b) => b.verification.score - a.verification.score,
+    );
+    const bestCandidate = sorted[0];
 
     const trace: ReasoningTrace = {
-      task_id: `trace-${Math.random().toString(36).substring(7)}`,
+      task_id: `best-of-n-${Math.random().toString(36).substring(7)}`,
       steps: candidates.map((c) => ({
         step_id: `branch-${c.index}`,
         thought: c.response.message.content,
         duration_ms: c.duration,
+        verification: c.verification,
       })),
-      strategy: budget.strategy,
+      strategy: "best_of_n",
       total_duration_ms: Date.now() - startTime,
       tokens_used: candidates.reduce(
         (sum, c) => sum + c.response.usage.total_tokens,
         0,
       ),
-      success: true,
+      success: bestCandidate.verification.valid,
       final_output: bestCandidate.response.message.content,
     };
 
@@ -353,6 +363,8 @@ export class SStarStrategy implements StrategyExecutor {
     const n = budget.max_branches ?? 1;
     const maxRetries = budget.max_retries ?? 2;
 
+    const verifier = VerifierFactory.create("execution", registry);
+
     // Stage 1: Generation & Iterative Debugging
     const branches = await Promise.all(
       Array.from({ length: n }).map(async (_, i) => {
@@ -367,7 +379,7 @@ export class SStarStrategy implements StrategyExecutor {
           lastResp = resp;
           branchTokens += resp.usage.total_tokens;
 
-          const verif = await this.verifyWithExecution(resp.message.content, registry);
+          const verif = await verifier.verify(resp.message.content);
           branchSteps.push({
             step_id: `branch-${i}-round-${r}`,
             thought: resp.message.content,
@@ -472,38 +484,6 @@ export class SStarStrategy implements StrategyExecutor {
     );
   }
 
-  private async verifyWithExecution(
-    content: string,
-    registry?: ToolRegistry,
-  ): Promise<VerifierResult> {
-    const code = this.extractCode(content);
-    if (!code) {
-      return {
-        valid: false,
-        score: 0,
-        feedback: "No code block found. Please wrap code in ```.",
-      };
-    }
-
-    if (!registry) {
-      return {
-        valid: false,
-        score: 0,
-        feedback: "Tool registry not available for verification.",
-      };
-    }
-
-    const result = await registry.call({
-      tool_id: "local_code_execution",
-      input: { code },
-    });
-    return {
-      valid: result.success,
-      score: result.success ? 1 : 0,
-      feedback: result.success ? undefined : `Runtime error: ${result.error}`,
-      metadata: { execution: result },
-    };
-  }
 }
 
 export class AutoTTSStrategy implements StrategyExecutor {
@@ -616,7 +596,7 @@ export class ReflexionStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
-    _registry?: ToolRegistry,
+    registry?: ToolRegistry,
     _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
@@ -625,6 +605,7 @@ export class ReflexionStrategy implements StrategyExecutor {
     let lastResponse: ModelResponse | null = null;
     let tokensUsed = 0;
     const maxRetries = budget.max_retries ?? 3;
+    const verifier = VerifierFactory.create(budget.verifier, registry);
 
     for (let i = 0; i <= maxRetries; i++) {
       const stepStartTime = Date.now();
@@ -632,8 +613,7 @@ export class ReflexionStrategy implements StrategyExecutor {
       lastResponse = response;
       tokensUsed += response.usage.total_tokens;
 
-      // Mock verification - in production this calls L5 Verifier System
-      const verification: VerifierResult = this.verify(
+      const verification: VerifierResult = await verifier.verify(
         response.message.content,
       );
 
@@ -659,7 +639,7 @@ export class ReflexionStrategy implements StrategyExecutor {
       throw new Error("Reasoning failed to produce a response");
 
     const trace: ReasoningTrace = {
-      task_id: `trace-${Math.random().toString(36).substring(7)}`,
+      task_id: `reflexion-${Math.random().toString(36).substring(7)}`,
       steps,
       strategy: budget.strategy,
       total_duration_ms: Date.now() - startTime,
@@ -669,15 +649,5 @@ export class ReflexionStrategy implements StrategyExecutor {
     };
 
     return { response: lastResponse, trace };
-  }
-
-  private verify(content: string): VerifierResult {
-    // Basic heuristic: check if it looks like a reasoned response
-    const valid = content.length > 20;
-    return {
-      valid,
-      score: valid ? 1 : 0,
-      feedback: valid ? undefined : "Response too concise, needs more detail.",
-    };
   }
 }

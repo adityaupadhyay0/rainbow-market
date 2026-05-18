@@ -22,13 +22,12 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Implement L5 Verifier system (execution, syntax).
+Mature L6 Parallel branch execution in Orchestrator.
 
 # Queued Tasks
 1. Mature L5 Reasoning (ToT).
 2. Implement L7 Hybrid Routing Policy.
-3. Implement L5 Verifier system (execution, syntax).
-4. Implement Observability/Telemetry (L8).
+3. Implement Observability/Telemetry (L8).
 5. Build CLI for itfs run.
 6. Implement L2 Embedding pipeline (batching, persistence).
 7. Add Web Search tool to L3 for CRAG "incorrect" fallback.
@@ -90,11 +89,12 @@ Implement L5 Verifier system (execution, syntax).
 - L4 Skill Layer (SkillLoader implementation).
 - L5 Reasoning Maturity (Tree of Thoughts - ToT).
 - Matured L5 RAT Strategy (Structured Querying, Confidence Integration).
+- Unified L5 Verifier system (execution, syntax, null).
 
 # Next 10 Priorities
-1. L5 Verifier system (execution, syntax).
-3. L6 Parallel branch execution in Orchestrator.
-4. L7 Routing Policy Engine.
+1. L6 Parallel branch execution in Orchestrator.
+2. Mature L5 Reasoning (ToT).
+3. L7 Routing Policy Engine.
 5. itfs run CLI implementation.
 6. L2 Persistence (File-based or SQLite).
 7. L3 Web Search tool.
