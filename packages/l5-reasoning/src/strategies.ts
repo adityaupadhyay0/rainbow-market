@@ -31,24 +31,35 @@ export class ToTStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
-    _registry?: ToolRegistry,
+    registry?: ToolRegistry,
     _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
     const maxBranches = budget.max_branches ?? 3;
     const maxDepth = budget.max_depth ?? 3;
+    const maxTokens = budget.max_tokens ?? 10000;
+    const verifier = VerifierFactory.create(budget.verifier, registry);
+
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
+    let budgetExceeded = false;
 
     // BFS Queue: each item is a path of messages
     let queue: Message[][] = [[...messages]];
     let finalTraceSteps: ReasoningStep[] = [];
     let bestFinalPath: Message[] | null = null;
+    let bestHeuristicPath: Message[] | null = null;
+    let maxHeuristicScore = -1;
 
     for (let depth = 0; depth < maxDepth; depth++) {
-      const nextQueue: Message[][] = [];
+      const nextQueue: { path: Message[]; score: number }[] = [];
 
       for (const path of queue) {
+        if (totalPromptTokens + totalCompletionTokens > maxTokens) {
+          budgetExceeded = true;
+          break;
+        }
+
         const stepStartTime = Date.now();
         // 1. Expand: Generate candidates
         const expansionPromises = Array.from({ length: maxBranches }).map(() =>
@@ -60,13 +71,25 @@ export class ToTStrategy implements StrategyExecutor {
           totalCompletionTokens += c.usage.completion_tokens;
         }
 
-        // 2. Evaluate: Score each candidate
-        const evaluations = await Promise.all(
-          candidates.map((c) => this.evaluate(model, path, c.message, budget)),
-        );
+        if (totalPromptTokens + totalCompletionTokens > maxTokens) {
+          budgetExceeded = true;
+        }
+
+        // 2. Evaluate & Verify: Score each candidate
+        const [evaluations, verifications] = await Promise.all([
+          Promise.all(
+            candidates.map((c) => this.evaluate(model, path, c.message, budget)),
+          ),
+          Promise.all(candidates.map((c) => verifier.verify(c.message.content))),
+        ]);
+
         for (const e of evaluations) {
           totalPromptTokens += e.usage.prompt_tokens;
           totalCompletionTokens += e.usage.completion_tokens;
+        }
+
+        if (totalPromptTokens + totalCompletionTokens > maxTokens) {
+          budgetExceeded = true;
         }
 
         const durationPerStep = Math.floor(
@@ -78,23 +101,38 @@ export class ToTStrategy implements StrategyExecutor {
           const evalResult = this.parseEvaluation(
             evaluations[i].message.content,
           );
+          const verification = verifications[i];
           const candidateMessage = candidates[i].message;
+
+          // Hybrid evaluation: Verifier has veto power over IMPOSSIBLE
+          if (!verification.valid) {
+            evalResult.value = ToTValue.IMPOSSIBLE;
+            evalResult.explanation = `Verification failed: ${verification.feedback}. ${evalResult.explanation}`;
+          }
+
+          const score =
+            evalResult.value === ToTValue.SURE
+              ? 1
+              : evalResult.value === ToTValue.LIKELY
+                ? 0.5
+                : 0;
 
           finalTraceSteps.push({
             step_id: `tot-d${depth}-b${i}-${Math.random().toString(36).substring(7)}`,
             thought: candidateMessage.content,
             verification: {
               valid: evalResult.value !== ToTValue.IMPOSSIBLE,
-              score:
-                evalResult.value === ToTValue.SURE
-                  ? 1
-                  : evalResult.value === ToTValue.LIKELY
-                    ? 0.5
-                    : 0,
+              score,
               feedback: evalResult.explanation,
+              metadata: { verifier: verification },
             },
             duration_ms: durationPerStep,
           });
+
+          if (score > maxHeuristicScore) {
+            maxHeuristicScore = score;
+            bestHeuristicPath = [...path, candidateMessage];
+          }
 
           if (evalResult.value === ToTValue.SURE && !bestFinalPath) {
             // Early termination if we find a SURE answer
@@ -102,18 +140,38 @@ export class ToTStrategy implements StrategyExecutor {
           }
 
           if (evalResult.value === ToTValue.LIKELY) {
-            nextQueue.push([...path, candidateMessage]);
+            nextQueue.push({
+              path: [...path, candidateMessage],
+              score,
+            });
           }
         }
 
-        if (bestFinalPath) break;
+        if (bestFinalPath || budgetExceeded) break;
       }
 
-      if (bestFinalPath || nextQueue.length === 0) break;
-      queue = nextQueue.slice(0, maxBranches); // Keep top branches for next depth
+      if (bestFinalPath || budgetExceeded || nextQueue.length === 0) break;
+
+      // Beam Search: Keep top branches for next depth based on score
+      queue = nextQueue
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxBranches)
+        .map((n) => n.path);
     }
 
-    const finalPath = bestFinalPath || queue[0] || messages;
+    if (budgetExceeded) {
+      if (budget.on_budget_exceeded === "fail") {
+        throw new Error(`Reasoning budget exceeded: ${totalPromptTokens + totalCompletionTokens} tokens used.`);
+      } else if (budget.on_budget_exceeded === "escalate") {
+        throw new Error(`Reasoning budget exceeded: Escalation required.`);
+      }
+    }
+
+    const finalPath =
+      bestFinalPath ||
+      (budget.on_budget_exceeded === "return_best" ? bestHeuristicPath : null) ||
+      queue[0] ||
+      messages;
     const lastMessage = finalPath[finalPath.length - 1];
 
     const trace: ReasoningTrace = {
@@ -160,16 +218,29 @@ ${candidate.content}`,
   }
 
   private parseEvaluation(content: string): ToTEvaluation {
-    const valueMatch = content.match(/VALUE:\s*(SURE|LIKELY|IMPOSSIBLE)/i);
-    const explanationMatch = content.match(/EXPLANATION:\s*(.*)/i);
+    const valueMatch = content.match(
+      /(?:VALUE|SCORE|RATING):\s*(SURE|LIKELY|IMPOSSIBLE)/i,
+    );
+    const explanationMatch = content.match(
+      /(?:EXPLANATION|REASON|WHY):\s*(.*)/i,
+    );
 
-    const valueStr = valueMatch?.[1].toUpperCase() || "IMPOSSIBLE";
+    let valueStr = valueMatch?.[1].toUpperCase() || "";
+
+    // Fallback: search for keywords if explicit marker is missing
+    if (!valueStr) {
+      if (/SURE|CORRECT|OPTIMAL/i.test(content)) valueStr = "SURE";
+      else if (/LIKELY|PROMISING|GOOD/i.test(content)) valueStr = "LIKELY";
+      else valueStr = "IMPOSSIBLE";
+    }
+
     const value =
       ToTValue[valueStr as keyof typeof ToTValue] || ToTValue.IMPOSSIBLE;
 
     return {
       value,
-      explanation: explanationMatch?.[1] || "No explanation provided.",
+      explanation:
+        explanationMatch?.[1]?.trim() || "No explanation provided.",
     };
   }
 }
