@@ -22,13 +22,12 @@ Layered architecture (L1-L7):
 - L3 enhanced with filesystem and web access tools.
 
 # Active Task
-Mature L6 Parallel branch execution in Orchestrator.
+Mature L5 Reasoning (ToT).
 
 # Queued Tasks
-1. Mature L5 Reasoning (ToT).
-2. Implement L7 Hybrid Routing Policy.
-3. Implement Observability/Telemetry (L8).
-5. Build CLI for itfs run.
+1. Implement L7 Hybrid Routing Policy.
+2. Implement Observability/Telemetry (L8).
+3. Build CLI for itfs run.
 6. Implement L2 Embedding pipeline (batching, persistence).
 7. Add Web Search tool to L3 for CRAG "incorrect" fallback.
 8. Implement multi-modal L1 adapters (Vision).
@@ -90,11 +89,11 @@ Mature L6 Parallel branch execution in Orchestrator.
 - L5 Reasoning Maturity (Tree of Thoughts - ToT).
 - Matured L5 RAT Strategy (Structured Querying, Confidence Integration).
 - Unified L5 Verifier system (execution, syntax, null).
+- Matured L6 Parallel branch execution and result synthesis in Orchestrator.
 
 # Next 10 Priorities
-1. L6 Parallel branch execution in Orchestrator.
-2. Mature L5 Reasoning (ToT).
-3. L7 Routing Policy Engine.
+1. Mature L5 Reasoning (ToT).
+2. L7 Routing Policy Engine.
 5. itfs run CLI implementation.
 6. L2 Persistence (File-based or SQLite).
 7. L3 Web Search tool.
@@ -117,3 +116,4 @@ Mature L6 Parallel branch execution in Orchestrator.
 - 2026-05-24: Completed deep repository analysis and initialized task sequence for L5 Reasoning maturity.
 - 2026-05-24: Implemented BFS-based Tree of Thoughts (ToT) strategy in L5 Reasoning layer. Added `ToTValue` and `ToTEvaluation` types.
 - 2026-05-24: Matured RAT Strategy with explicit query extraction, confidence-aware refinement, and robust termination checks.
+- 2026-05-24: Matured L6 Orchestration with reactive parallel execution, robust error handling, and multi-node result synthesis.

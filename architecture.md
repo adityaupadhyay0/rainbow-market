@@ -10,7 +10,7 @@ ITFS is a 7-layer stack designed for Inference-Time Scaling.
 - `packages/l3-tooling`: The "Hands". Deterministic actions.
 - `packages/l4-skill`: The "Workflows". Procedural knowledge loading and management.
 - `packages/l5-reasoning`: The "Brain". Controls test-time compute, iterative retrieval via RAT.
-- `packages/l6-orchestration`: The "Manager". Plans and executes DAGs.
+- `packages/l6-orchestration`: The "Manager". Plans and executes DAGs via reactive parallel execution and synthesizes final results from terminal subtasks.
 
 ## Data Flow
-User Task -> L7 (Route) -> L6 (Decompose) -> L6 (Dispatch to L4/L5) -> L5 (Reason via L1 + L2 Retrieval for RAT) -> L4 (Use Tools from L3 / Knowledge from L2 via CRAG) -> L6 (Synthesize) -> User.
+User Task -> L7 (Route) -> L6 (Decompose) -> L6 (Dispatch to L4/L5) -> L5 (Reason via L1 + L2 Retrieval for RAT) -> L4 (Use Tools from L3 / Knowledge from L2 via CRAG) -> L6 (Reactive Parallel Execution) -> L6 (Final Synthesis) -> User.

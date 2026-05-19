@@ -13,6 +13,7 @@ describe("Orchestrator", () => {
     complete: vi.fn(),
     stream: vi.fn(),
     estimateTokens: vi.fn(),
+    embed: vi.fn(),
   };
 
   const mockEngine = new ReasoningEngine();
@@ -39,9 +40,14 @@ describe("Orchestrator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     orchestrator = new Orchestrator(mockModel, mockEngine);
+    // Mock synthesis response
+    (mockModel.complete as vi.Mock).mockResolvedValue({
+      message: { role: "assistant", content: "Final synthesized output" },
+      usage: { prompt_tokens: 50, completion_tokens: 50, total_tokens: 100 },
+    });
   });
 
-  it("should decompose and execute a task", async () => {
+  it("should decompose and execute a task with synthesis", async () => {
     const envelope: TaskEnvelope = {
       task_id: "task-1",
       domain: "general",
@@ -79,7 +85,8 @@ describe("Orchestrator", () => {
       ],
     };
 
-    (mockModel.complete as vi.Mock).mockResolvedValue({
+    // First call is for decomposition
+    (mockModel.complete as vi.Mock).mockResolvedValueOnce({
       message: { content: JSON.stringify(mockGraph) },
       usage: { total_tokens: 50 },
     });
@@ -90,9 +97,10 @@ describe("Orchestrator", () => {
     expect(result.task_id).toBe("task-1");
     expect(Object.keys(result.subtask_traces)).toHaveLength(2);
     expect(mockEngine.solve).toHaveBeenCalledTimes(2);
+    expect(result.output).toBe("Final synthesized output");
   });
 
-  it("should handle parallel subtasks", async () => {
+  it("should handle parallel subtasks efficiently", async () => {
     const envelope: TaskEnvelope = {
       task_id: "task-parallel",
       domain: "general",
@@ -129,7 +137,7 @@ describe("Orchestrator", () => {
       ],
     };
 
-    (mockModel.complete as vi.Mock).mockResolvedValue({
+    (mockModel.complete as vi.Mock).mockResolvedValueOnce({
       message: { content: JSON.stringify(mockGraph) },
       usage: { total_tokens: 50 },
     });
@@ -138,6 +146,7 @@ describe("Orchestrator", () => {
 
     expect(result.success).toBe(true);
     expect(mockEngine.solve).toHaveBeenCalledTimes(3);
+    expect(result.output).toBe("Final synthesized output");
   });
 
   it("should fail if a subtask fails", async () => {
@@ -163,19 +172,59 @@ describe("Orchestrator", () => {
       ],
     };
 
-    (mockModel.complete as vi.Mock).mockResolvedValue({
+    (mockModel.complete as vi.Mock).mockResolvedValueOnce({
       message: { content: JSON.stringify(mockGraph) },
       usage: { total_tokens: 50 },
     });
 
     vi.spyOn(mockEngine, "solve").mockResolvedValueOnce({
-      response: {} as unknown as never,
-      trace: { success: false } as unknown as never,
+      response: {} as unknown as any,
+      trace: { success: false } as unknown as any,
     });
 
     const result = await orchestrator.run(envelope);
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("Subtasks failed: f1");
+    expect(result.error).toContain("Subtask failed: f1");
+  });
+
+  it("should handle complex DAG with multiple terminal nodes", async () => {
+    const envelope: TaskEnvelope = {
+      task_id: "task-dag",
+      domain: "general",
+      title: "DAG Task",
+      description: "Complex DAG",
+      budget: { strategy: "cot" } as unknown as ReasoningBudget,
+      privacy_mode: "local_only",
+    };
+
+    const mockGraph: TaskGraph = {
+      task_id: "task-dag",
+      subtasks: [
+        { subtask_id: "a", title: "A", description: "A", dependencies: [], status: "pending" },
+        { subtask_id: "b", title: "B", description: "B", dependencies: ["a"], status: "pending" },
+        { subtask_id: "c", title: "C", description: "C", dependencies: ["a"], status: "pending" },
+        { subtask_id: "d", title: "D", description: "D", dependencies: ["b"], status: "pending" },
+      ],
+    };
+    // Here 'c' and 'd' are terminal nodes.
+
+    (mockModel.complete as vi.Mock).mockResolvedValueOnce({
+      message: { content: JSON.stringify(mockGraph) },
+      usage: { total_tokens: 50 },
+    });
+
+    const result = await orchestrator.run(envelope);
+
+    expect(result.success).toBe(true);
+    expect(mockEngine.solve).toHaveBeenCalledTimes(4);
+    expect(result.output).toBe("Final synthesized output");
+
+    // Verify synthesis was called with correct context
+    const lastCall = (mockModel.complete as vi.Mock).mock.calls.find(call =>
+      call[0][0].content.includes("Focus particularly on the terminal subtasks")
+    );
+    expect(lastCall[0][0].content).toContain("- c: C");
+    expect(lastCall[0][0].content).toContain("- d: D");
   });
 });
