@@ -119,3 +119,31 @@ We use a discrete value-based evaluation (SURE/LIKELY/IMPOSSIBLE) instead of con
 ### Limitations
 - Compute cost scales with $k^d$ (partially mitigated by beam search and early termination).
 - Evaluation quality depends on the model's self-assessment accuracy.
+
+## 2026-05-24 — Hybrid Model-Verifier Evaluation in Tree Search
+
+### Source
+Internal Evolution (Maturity of L5 ToT)
+
+### Insight
+Pure model-based evaluation in Tree of Thoughts is prone to "self-assessment hallucination," where the model overestimates the quality of its own intermediate steps. Integrating a deterministic or execution-based verifier during the expansion phase provides a "grounding veto."
+
+### Conflict
+A verifier (like syntax or execution) is often too strict for early-stage thoughts that might be conceptual. However, for coding tasks, failing a syntax check is an absolute signal.
+
+### Adaptation
+In matured `ToTStrategy`, we use a hybrid approach:
+1. Model generates value (SURE/LIKELY/IMPOSSIBLE).
+2. Verifier runs on the same thought.
+3. If Verifier returns `valid: false`, the value is forced to `IMPOSSIBLE` regardless of the model's score.
+4. If Verifier returns `valid: true`, we trust the model's nuanced score (SURE vs LIKELY).
+
+### Simplification
+Veto-only integration: the verifier only acts as a hard filter (IMPOSSIBLE) if it fails, rather than trying to combine continuous scores from both sources.
+
+### Reusable Pattern
+`GroundedExpansion`: An expansion step in a search tree where model-generated candidates are immediately passed through a deterministic verifier to prune the search space before further exploration.
+
+### Limitations
+- Verifier latency adds to each expansion step.
+- Verifier must be fast (e.g., syntax) or the search becomes prohibitively slow.
