@@ -31,7 +31,7 @@ export class ToTStrategy implements StrategyExecutor {
     model: ModelAdapter,
     messages: Message[],
     budget: ReasoningBudget,
-    _registry?: ToolRegistry,
+    registry?: ToolRegistry,
     _retriever?: Retriever,
   ): Promise<{ response: ModelResponse; trace: ReasoningTrace }> {
     const startTime = Date.now();
@@ -40,10 +40,14 @@ export class ToTStrategy implements StrategyExecutor {
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
 
+    const verifier = VerifierFactory.create(budget.verifier, registry);
+
     // BFS Queue: each item is a path of messages
     let queue: Message[][] = [[...messages]];
     let finalTraceSteps: ReasoningStep[] = [];
     let bestFinalPath: Message[] | null = null;
+
+    let budgetExceeded = false;
 
     for (let depth = 0; depth < maxDepth; depth++) {
       const nextQueue: Message[][] = [];
@@ -60,6 +64,11 @@ export class ToTStrategy implements StrategyExecutor {
           totalCompletionTokens += c.usage.completion_tokens;
         }
 
+        if (totalPromptTokens + totalCompletionTokens > budget.max_tokens) {
+          budgetExceeded = true;
+          break;
+        }
+
         // 2. Evaluate: Score each candidate
         const evaluations = await Promise.all(
           candidates.map((c) => this.evaluate(model, path, c.message, budget)),
@@ -67,6 +76,11 @@ export class ToTStrategy implements StrategyExecutor {
         for (const e of evaluations) {
           totalPromptTokens += e.usage.prompt_tokens;
           totalCompletionTokens += e.usage.completion_tokens;
+        }
+
+        if (totalPromptTokens + totalCompletionTokens > budget.max_tokens) {
+          budgetExceeded = true;
+          break;
         }
 
         const durationPerStep = Math.floor(
@@ -79,6 +93,13 @@ export class ToTStrategy implements StrategyExecutor {
             evaluations[i].message.content,
           );
           const candidateMessage = candidates[i].message;
+
+          // Unified Verifier integration
+          const verifierResult = await verifier.verify(candidateMessage.content);
+          if (!verifierResult.valid) {
+            evalResult.value = ToTValue.IMPOSSIBLE;
+            evalResult.explanation = `Verifier failed: ${verifierResult.feedback || "No feedback"}`;
+          }
 
           finalTraceSteps.push({
             step_id: `tot-d${depth}-b${i}-${Math.random().toString(36).substring(7)}`,
@@ -106,11 +127,18 @@ export class ToTStrategy implements StrategyExecutor {
           }
         }
 
-        if (bestFinalPath) break;
+        if (bestFinalPath || budgetExceeded) break;
       }
 
-      if (bestFinalPath || nextQueue.length === 0) break;
+      if (bestFinalPath || nextQueue.length === 0 || budgetExceeded) break;
       queue = nextQueue.slice(0, maxBranches); // Keep top branches for next depth
+    }
+
+    if (budgetExceeded) {
+      if (budget.on_budget_exceeded === "fail") {
+        throw new Error("Reasoning budget exceeded (max_tokens).");
+      }
+      // If "return_best" or "escalate" (default to return_best here), we fall through to return what we have.
     }
 
     const finalPath = bestFinalPath || queue[0] || messages;
@@ -147,10 +175,12 @@ export class ToTStrategy implements StrategyExecutor {
   ): Promise<ModelResponse> {
     const evaluationPrompt: Message = {
       role: "user",
-      content: `Evaluate the following thought as a step toward solving the problem.
-Answer with:
+      content: `Evaluate the following thought step carefully.
+Does it lead closer to a correct and complete solution?
+
+Answer strictly in this format:
 VALUE: [SURE | LIKELY | IMPOSSIBLE]
-EXPLANATION: [Brief explanation]
+EXPLANATION: [Reasoning for the value]
 
 Thought:
 ${candidate.content}`,
